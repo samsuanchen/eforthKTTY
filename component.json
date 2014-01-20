@@ -1,0 +1,37 @@
+{
+  "name": "eforthKTTY",
+  "repo": "",
+  "description": "ksana (node webkit/chrome) serialport tty",
+  "version": "0.0.1",
+  "keywords": [],
+  "dependencies": {
+    "ksanaforge/boot": "*",
+    "brighthas/bootstrap": "*",
+    "component/jquery": "*",
+    "eforthKTTY/main": "*",
+    "eforthKTTY/inputarea": "*",
+    "eforthKTTY/outputarea": "*",
+    "eforthKTTY/statusbar": "*",
+    "eforthKTTY/titlebar": "*",
+    "eforthKTTY/controlpanel": "*",
+    "eforthKTTY/connection": "*"
+  },
+  "development": {},
+  "paths": [
+    "components",
+    "../kse-ui/components",
+    "../components",
+    "../node_modules/"
+  ], 
+  "local": [
+    "facebook/react"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": [
+    "index.js","conn.js"
+  ],
+  "styles": [
+    "index.css"
+  ]
+}

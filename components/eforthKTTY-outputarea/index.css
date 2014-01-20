@@ -1,0 +1,9 @@
+.outputarea {border: 1px solid fuchsia;
+	margin-top:0px;
+	width: 622px;
+    height: 384px;
+	overflow: auto;
+	overflow-y: auto;
+	overflow-x: none;
+	background: #eee;
+}
