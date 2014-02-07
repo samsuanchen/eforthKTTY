@@ -1,5 +1,4 @@
 /** @jsx React.DOM */
-
 //var othercomponent=Require("other"); 
 var connection = React.createClass({
   getInitialState: function() {

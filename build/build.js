@@ -11853,8 +11853,11 @@ var main = React.createClass({displayName: 'main',
       )
     );
   },
+  opened:function() {
+    console.log('opened')
+  },
   connect:function() {
-    conn.doconnect();
+    conn.doconnect(this.opened.bind(this));
     
   },
   execcmd:function(cmd) {
@@ -11961,7 +11964,6 @@ module.exports=controlpanel;
 });
 require.register("eforthKTTY-connection/index.js", function(exports, require, module){
 /** @jsx React.DOM */
-
 //var othercomponent=Require("other"); 
 var connection = React.createClass({displayName: 'connection',
   getInitialState: function() {
@@ -27497,26 +27499,38 @@ var platform=function() {
 	if (typeof process != "undefined") {
 		return "nodewebkit"
 	} else if (typeof chrome !="undefined") {
-		return "chrome";
+		return "chrome"
 	}
 }
-var serialport=null;
+var serialport=null,timer=null;
 var doconnect_nw=function(onPortOpened) {
-	serialopen.open('com32',19200);
-	//openPort('COM32', 19200, onPortOpened)
+	serialport.open(onPortOpened)
 //	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
 }
-
+var onPortOpened=function(){
+    clearTimeout(timer)
+	console.log(Date(),'onPortOpened')
+}
 var doconnect_chrome=function(onPortOpened) {
 	openPort('COM32', 19200, onPortOpened)
 //	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
 }
-if (platform()=="chrome") {
-	module.exports={doconnect:doconnect_chrome}
-} else if (platform()=="nodewebkit") {
-	serialport=new require("serialport")();
-	module.exports={doconnect:doconnect_nw}
+var doconnect=null;
+
+if (typeof chrome !="undefined") { // chrome
+	doconnect=doconnect_chrome
+} 
+else if (typeof process != "undefined") { // nodewebkit
+
+	var S=nodeRequire("serialport")
+	console.log("nodewebkit",S)
+	serialport=new S.SerialPort('COM32',{baudrate:19200},false)
+    doconnect=doconnect_nw
 }
+
+//this.timer=setInterval(doconnect, 1000)
+timer=setTimeout(doconnect,1000)
+module.exports={doconnect:doconnect}
 });
 
 

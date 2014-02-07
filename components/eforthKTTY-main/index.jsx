@@ -19,8 +19,11 @@ var main = React.createClass({
       </div>
     );
   },
+  opened:function() {
+    console.log('opened')
+  },
   connect:function() {
-    conn.doconnect();
+    conn.doconnect(this.opened.bind(this));
     
   },
   execcmd:function(cmd) {
