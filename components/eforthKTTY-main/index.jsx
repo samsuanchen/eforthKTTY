@@ -19,16 +19,33 @@ var main = React.createClass({
       </div>
     );
   },
-  opened:function() {
-    console.log('opened')
+  onData:function(bytes) {
+
+  },
+  onOpen:function(bytes) {
+
+  },
+  onClose:function(bytes) {
+
+  },
+  onError:function(bytes) {
+
+  },
+  write:function(bytes) {
+
+  },
+  opened:function(bytes) {
+    if (typeof bytes !='undefined') {
+      console.log(Date(),"COM32: openfail")
+    } else {
+      console.log(Date(),'COM32: opened')
+    }
   },
   connect:function() {
-    conn.doconnect(this.opened.bind(this));
-    
+    conn.doconnect(this.opened.bind());
   },
   execcmd:function(cmd) {
     console.log(cmd);
   }
-
 });
 module.exports=main;

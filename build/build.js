@@ -11853,17 +11853,34 @@ var main = React.createClass({displayName: 'main',
       )
     );
   },
-  opened:function() {
-    console.log('opened')
+  onData:function(bytes) {
+
+  },
+  onOpen:function(bytes) {
+
+  },
+  onClose:function(bytes) {
+
+  },
+  onError:function(bytes) {
+
+  },
+  write:function(bytes) {
+
+  },
+  opened:function(bytes) {
+    if (typeof bytes !='undefined') {
+      console.log(Date(),"COM32: openfail")
+    } else {
+      console.log(Date(),'COM32: opened')
+    }
   },
   connect:function() {
-    conn.doconnect(this.opened.bind(this));
-    
+    conn.doconnect(this.opened.bind());
   },
   execcmd:function(cmd) {
     console.log(cmd);
   }
-
 });
 module.exports=main;
 });
@@ -27507,21 +27524,24 @@ var doconnect_nw=function(onPortOpened) {
 	serialport.open(onPortOpened)
 //	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
 }
-var onPortOpened=function(){
-    clearTimeout(timer)
-	console.log(Date(),'onPortOpened')
-}
 var doconnect_chrome=function(onPortOpened) {
 	openPort('COM32', 19200, onPortOpened)
 //	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
 }
+var opened=function(bytes) {
+    if (typeof bytes !='undefined') {
+      console.log(Date(),"COM32: openfail")
+    } else {
+      console.log(Date(),'COM32: opened')
+    }
+  }
 var doconnect=null;
 
 if (typeof chrome !="undefined") { // chrome
 	doconnect=doconnect_chrome
 } 
 else if (typeof process != "undefined") { // nodewebkit
-
+	debugger
 	var S=nodeRequire("serialport")
 	console.log("nodewebkit",S)
 	serialport=new S.SerialPort('COM32',{baudrate:19200},false)
@@ -27529,7 +27549,7 @@ else if (typeof process != "undefined") { // nodewebkit
 }
 
 //this.timer=setInterval(doconnect, 1000)
-timer=setTimeout(doconnect,1000)
+//timer=setTimeout(doconnect,1000)
 module.exports={doconnect:doconnect}
 });
 
