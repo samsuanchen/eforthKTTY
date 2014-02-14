@@ -14,10 +14,7 @@ var main = React.createClass({
       <div>
         <titlebar/>
         <outputarea/>
-        <controlpanel
-          onClose  ={this.  closePort}
-          onConnect={this.connectPort}
-          onExecute={this.sendCommand}/>
+        <controlpanel onConnect={this.connect} onExecute={this.execcmd}/>
         <statusbar/>
       </div>
     );
@@ -25,33 +22,33 @@ var main = React.createClass({
   port: 'COM32',
   baud: 19200,
   system: '328eforth',
-  onPortOpen:function(e) {
+  onOpen:function(e) {
     if (e) {
       console.log(Date(),"COM32: openfail",e.message)
       return
     }
-    this.onPortOpened()
+    this.opened()
   },
-  onPortOpened:function() {
+  onOpened:function() {
     console.log(Date(),"COM32: opened")
   },
-  onPortRecievedData:function(bytes) {
-    console.log(Date(),"COM32: data recieved",bytes)
+  onData:function(bytes) {
+    console.log(Date(),"COM32: data read",bytes)
   },
-  onPortClosed:function() {
-    console.log(Date(),"COM32: closed")
+  onClose:function() {
+    console.log(Date(),"COM32: close")
   },
-  onPortError:function(e) {
+  onError:function(e) {
     console.log(Date(),"COM32: error",e)
   },
-  connectPort:function() {
-    conn.doConnect(this.onPortOpen,this);
+  write:function(bytes) {
+    console.log(Date(),"COM32: write",bytes)
   },
-  closePort:function() {
-    conn.doClosePort();
+  connect:function() {
+    conn.doconnect(this.onOpen,this);
   },
-  sendCommand:function(cmd) {
-    conn.doWritePort(cmd)
+  execcmd:function(cmd) {
+    console.log(cmd);
   }
 });
 module.exports=main;

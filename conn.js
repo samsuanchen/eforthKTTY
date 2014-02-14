@@ -1,39 +1,37 @@
-var platform=function() {
+debugger
+var platform=function() { var r
 	if (typeof process != "undefined") {
-		return "nodewebkit"
+		r="nodewebkit"
 	} else if (typeof chrome !="undefined") {
-		return "chrome"
+		r="chrome"
 	}
+	console.log('platform',r)
+	return r
 }
-var serialport=null,timer=null;
-var doconnect_nw=function(onPortOpened) {
-	serialport.open(onPortOpened)
-//	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
-}
-var doconnect_chrome=function(onPortOpened) {
-	openPort('COM32', 19200, onPortOpened)
-//	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
-}
-var opened=function(bytes) {
-    if (typeof bytes !='undefined') {
-      console.log(Date(),"COM32: openfail")
-    } else {
-      console.log(Date(),'COM32: opened')
-    }
-  }
-var doconnect=null;
-
-if (typeof chrome !="undefined") { // chrome
-	doconnect=doconnect_chrome
-} 
-else if (typeof process != "undefined") { // nodewebkit
-	debugger
+if (platform()=='nodewebkit') {
 	var S=nodeRequire("serialport")
-	console.log("nodewebkit",S)
-	serialport=new S.SerialPort('COM32',{baudrate:19200},false)
-    doconnect=doconnect_nw
+	var serialport=null
 }
-
-//this.timer=setInterval(doconnect, 1000)
-//timer=setTimeout(doconnect,1000)
-module.exports={doconnect:doconnect}
+var doConnect_nodewebkit=function(onPortOpen,that) {
+	serialport=new S.SerialPort(that.port,{baudrate:that.baud},false)
+	var other=that
+	serialport.open(function (e) {
+		other.onPortOpen(e)
+		serialport.on("data",other.onPortRecievedData)
+		serialport.on("close",other.onPortClosed)
+		serialport.on("error",other.onPortError)
+	})
+}
+var doWritePort_nodewebkit=function(command) {
+	serialport.write(command+'\r')
+}
+var doClosePort_nodewebkit=function() {
+	serialport.close()
+}
+var doConnect_chrome=function(onPortOpen,that) {
+	openPort('COM32', 19200, onPortOpen)
+//	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
+}
+var doConnect  =eval('doConnect_'  +platform())
+var doWritePort=eval('doWritePort_'+platform())
+module.exports={doConnect:doConnect,doWritePort:doWritePort}

@@ -10,7 +10,9 @@ var controlpanel = React.createClass({
     return (
       <div className='controlpanel'>
         <inputarea onExecute={this.props.onExecute}/>
-        <connection onConnect={this.props.onConnect}/>
+        <connection
+          onClose  ={this.props.onClose  }
+          onConnect={this.props.onConnect}/>
       </div>
     );
   }
