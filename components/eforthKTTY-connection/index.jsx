@@ -2,10 +2,15 @@
 //var othercomponent=Require("other"); 
 var connection = React.createClass({
   getInitialState: function() {
-    return {bar: "world"};
+    return {connect: false};
   },
   render: function() {
-    return (
+    if (this.state.connect) return (
+      <div>
+        <button onClick={this.doconnect}>close</button>
+      </div>
+    );
+    else return (
       <div>
         <button onClick={this.doconnect}>connect</button>
       </div>
@@ -13,7 +18,7 @@ var connection = React.createClass({
   },
   doconnect:function() {
     //get port...
-    this.props.onConnect();
+    this.props.onConnect(this.props.port,this.props.baud);
   }
 });
 module.exports=connection;

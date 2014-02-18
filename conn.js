@@ -13,8 +13,9 @@ if (platForm=='nodewebkit') {
 	var serialport=null
 	console.log('platform',platForm)
 }
-var doConnect_nodewebkit=function(onPortOpen,that) {
-	serialport=new S.SerialPort(that.port,{baudrate:that.baud},false)
+var doConnect_nodewebkit=function(onPortOpen,port,baud,that) {
+	serialport=new S.SerialPort(port,
+		{baudrate:baud},false)
 	var other=that
 	serialport.open(function (e) {
 		other.onPortOpen(e)
@@ -26,7 +27,7 @@ var doConnect_nodewebkit=function(onPortOpen,that) {
 var doWritePort_nodewebkit=function(command) {
 	serialport.write(command+'\r')
 }
-var doClosePort_nodewebkit=function() {
+var doClosePort_nodewebkit=function(that) {
 	serialport.close()
 }
 var doConnect_chrome=function(onPortOpen,that) {
@@ -36,6 +37,7 @@ var doConnect_chrome=function(onPortOpen,that) {
 var doConnect  =eval('doConnect_'  +platForm)
 var doWritePort=eval('doWritePort_'+platForm)
 var doClosePort=eval('doClosePort_'+platForm)
+
 module.exports={
 	doConnect:doConnect,
 	doWritePort:doWritePort,

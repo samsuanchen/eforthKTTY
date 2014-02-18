@@ -12,7 +12,9 @@ var controlpanel = React.createClass({
         <inputarea onExecute={this.props.onExecute}/>
         <connection
           onClose  ={this.props.onClose  }
-          onConnect={this.props.onConnect}/>
+          onConnect={this.props.onConnect}
+          port     ={this.props.port}
+          baud     ={this.props.baud}/>
       </div>
     );
   }

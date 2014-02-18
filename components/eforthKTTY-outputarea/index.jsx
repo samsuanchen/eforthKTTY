@@ -8,7 +8,7 @@ var outputarea = React.createClass({
   render: function() {
     return (
       <div className="outputarea">
-        
+        {this.props.recieved?this.props.recieved.toString():''}
       </div>
     );
   }

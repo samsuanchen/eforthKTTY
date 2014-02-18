@@ -15,7 +15,7 @@ var inputarea = React.createClass({
   },
   sendcmd:function() {
     var cmd=this.refs.inputcmd.getDOMNode().value;
-    this.props.onExecute(cmd) 
+    this.props.onExecute(cmd);
   }
 });
 module.exports=inputarea;

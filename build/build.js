@@ -11839,60 +11839,80 @@ var outputarea=Require("outputarea");
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
+var recieved;
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
-    return {cmd: "WORDS", connect: false};
+    return {
+      cmd: "WORDS",
+      port: "COM32",
+      baud: 19200, 
+      connect: false,
+      system: "328eforth",
+      recieved:recieved};
   },
   render: function() {
     return (
       React.DOM.div(null, 
+        " port: ", this.state.port,
+        " baud: ", this.state.baud,
+        " system: ", this.state.system,
+        " connect: ", JSON.stringify(this.state.connect),
         titlebar(null),
-        outputarea(null),
+        outputarea(
+          {recieved: this.state.recieved}),
         controlpanel(
           {onClose:  this.  closePort,
           onConnect:this.connectPort,
+          port:this.state.port,
+          baud:this.state.baud,
           onExecute:this.sendCommand}),
         statusbar(null)
       )
     );
   },
-  port: 'COM32',
-  baud: 19200,
-  system: '328eforth',
   onPortOpen:function(e) {
     if (e) {
-      console.log(Date(),"COM32: openfail",e.message)
-      return
+      console.log(Date(),this.state.port+": openfail",e.message);
+      return;
     }
-    this.onPortOpened()
+    this.onPortOpened();
   },
   onPortOpened:function() {
-    console.log(Date(),"COM32: opened")
-    this.setState({'connect':true})
+    console.log(Date(),this.state.port+": opened");
+    this.setState({'connect':true});
   },
   onPortRecievedData:function(bytes) {
-    console.log(Date(),"COM32: data recieved",bytes)
+    console.log(Date(),this.state.port+": data recieved",bytes);
+    var u = new Uint8Array(bytes.data), recieved=this.state.recieved;
+    if (!recieved) {
+      recieved=u;
+    } else {
+      for (var i=0; i<u.length; i++) {
+        recieved.push(u[i]);
+      }
+    }
+    this.setState({'recieved':recieved});
   },
   onPortClosed:function() {
-    console.log(Date(),"COM32: closed")
-    this.setState({'connect':false})
+    console.log(Date(),this.state.port+": closed");
+    this.setState({'connect':false});
   },
   onPortError:function(e) {
-    console.log(Date(),"COM32: error",e)
+    console.log(Date(),this.state.port+": error",e);
   },
   connectPort:function() {
     if (this.state.connect) {
-      this.closePort()
+      this.closePort();
     }
     else {
-      conn.doConnect(this.onPortOpen,this)
+      conn.doConnect(this.onPortOpen,this.state.port,this.state.baud,this);
     }
   },
   closePort:function() {
-    conn.doClosePort();
+    conn.doClosePort(this);
   },
   sendCommand:function(cmd) {
-    conn.doWritePort(cmd)
+    conn.doWritePort(cmd);
   }
 });
 module.exports=main;
@@ -11915,7 +11935,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
   },
   sendcmd:function() {
     var cmd=this.refs.inputcmd.getDOMNode().value;
-    this.props.onExecute(cmd) 
+    this.props.onExecute(cmd);
   }
 });
 module.exports=inputarea;
@@ -11930,8 +11950,8 @@ var outputarea = React.createClass({displayName: 'outputarea',
   },
   render: function() {
     return (
-      React.DOM.div( {className:"outputarea"}
-        
+      React.DOM.div( {className:"outputarea"}, 
+        this.props.recieved?this.props.recieved.toString():''
       )
     );
   }
@@ -11987,7 +12007,9 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
         inputarea( {onExecute:this.props.onExecute}),
         connection(
           {onClose:  this.props.onClose,  
-          onConnect:this.props.onConnect})
+          onConnect:this.props.onConnect,
+          port:     this.props.port,
+          baud:     this.props.baud})
       )
     );
   }
@@ -11999,10 +12021,15 @@ require.register("eforthKTTY-connection/index.js", function(exports, require, mo
 //var othercomponent=Require("other"); 
 var connection = React.createClass({displayName: 'connection',
   getInitialState: function() {
-    return {bar: "world"};
+    return {connect: false};
   },
   render: function() {
-    return (
+    if (this.state.connect) return (
+      React.DOM.div(null, 
+        React.DOM.button( {onClick:this.doconnect}, "close")
+      )
+    );
+    else return (
       React.DOM.div(null, 
         React.DOM.button( {onClick:this.doconnect}, "connect")
       )
@@ -12010,7 +12037,7 @@ var connection = React.createClass({displayName: 'connection',
   },
   doconnect:function() {
     //get port...
-    this.props.onConnect();
+    this.props.onConnect(this.props.port,this.props.baud);
   }
 });
 module.exports=connection;
@@ -27542,8 +27569,9 @@ if (platForm=='nodewebkit') {
 	var serialport=null
 	console.log('platform',platForm)
 }
-var doConnect_nodewebkit=function(onPortOpen,that) {
-	serialport=new S.SerialPort(that.port,{baudrate:that.baud},false)
+var doConnect_nodewebkit=function(onPortOpen,port,baud,that) {
+	serialport=new S.SerialPort(port,
+		{baudrate:baud},false)
 	var other=that
 	serialport.open(function (e) {
 		other.onPortOpen(e)
@@ -27555,7 +27583,7 @@ var doConnect_nodewebkit=function(onPortOpen,that) {
 var doWritePort_nodewebkit=function(command) {
 	serialport.write(command+'\r')
 }
-var doClosePort_nodewebkit=function() {
+var doClosePort_nodewebkit=function(that) {
 	serialport.close()
 }
 var doConnect_chrome=function(onPortOpen,that) {
@@ -27565,6 +27593,7 @@ var doConnect_chrome=function(onPortOpen,that) {
 var doConnect  =eval('doConnect_'  +platForm)
 var doWritePort=eval('doWritePort_'+platForm)
 var doClosePort=eval('doClosePort_'+platForm)
+
 module.exports={
 	doConnect:doConnect,
 	doWritePort:doWritePort,
