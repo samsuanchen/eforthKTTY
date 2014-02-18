@@ -5,12 +5,13 @@ var platform=function() { var r
 	} else if (typeof chrome !="undefined") {
 		r="chrome"
 	}
-	console.log('platform',r)
 	return r
 }
-if (platform()=='nodewebkit') {
+var platForm=platform()
+if (platForm=='nodewebkit') {
 	var S=nodeRequire("serialport")
 	var serialport=null
+	console.log('platform',platForm)
 }
 var doConnect_nodewebkit=function(onPortOpen,that) {
 	serialport=new S.SerialPort(that.port,{baudrate:that.baud},false)
@@ -32,6 +33,10 @@ var doConnect_chrome=function(onPortOpen,that) {
 	openPort('COM32', 19200, onPortOpen)
 //	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
 }
-var doConnect  =eval('doConnect_'  +platform())
-var doWritePort=eval('doWritePort_'+platform())
-module.exports={doConnect:doConnect,doWritePort:doWritePort}
+var doConnect  =eval('doConnect_'  +platForm)
+var doWritePort=eval('doWritePort_'+platForm)
+var doClosePort=eval('doClosePort_'+platForm)
+module.exports={
+	doConnect:doConnect,
+	doWritePort:doWritePort,
+	doClosePort:doClosePort}

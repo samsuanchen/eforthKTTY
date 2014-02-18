@@ -11841,7 +11841,7 @@ var statusbar=Require("statusbar");
 var conn=Require("eforthKTTY/conn");
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
-    return {cmd: "WORDS"};
+    return {cmd: "WORDS", connect: false};
   },
   render: function() {
     return (
@@ -11868,18 +11868,25 @@ var main = React.createClass({displayName: 'main',
   },
   onPortOpened:function() {
     console.log(Date(),"COM32: opened")
+    this.setState({'connect':true})
   },
   onPortRecievedData:function(bytes) {
     console.log(Date(),"COM32: data recieved",bytes)
   },
   onPortClosed:function() {
     console.log(Date(),"COM32: closed")
+    this.setState({'connect':false})
   },
   onPortError:function(e) {
     console.log(Date(),"COM32: error",e)
   },
   connectPort:function() {
-    conn.doConnect(this.onPortOpen,this);
+    if (this.state.connect) {
+      this.closePort()
+    }
+    else {
+      conn.doConnect(this.onPortOpen,this)
+    }
   },
   closePort:function() {
     conn.doClosePort();
@@ -27527,12 +27534,13 @@ var platform=function() { var r
 	} else if (typeof chrome !="undefined") {
 		r="chrome"
 	}
-	console.log('platform',r)
 	return r
 }
-if (platform()=='nodewebkit') {
+var platForm=platform()
+if (platForm=='nodewebkit') {
 	var S=nodeRequire("serialport")
 	var serialport=null
+	console.log('platform',platForm)
 }
 var doConnect_nodewebkit=function(onPortOpen,that) {
 	serialport=new S.SerialPort(that.port,{baudrate:that.baud},false)
@@ -27554,9 +27562,13 @@ var doConnect_chrome=function(onPortOpen,that) {
 	openPort('COM32', 19200, onPortOpen)
 //	openPort(e_port.value, parseInt(e_bitrate.value), onPortOpened)
 }
-var doConnect  =eval('doConnect_'  +platform())
-var doWritePort=eval('doWritePort_'+platform())
-module.exports={doConnect:doConnect,doWritePort:doWritePort}
+var doConnect  =eval('doConnect_'  +platForm)
+var doWritePort=eval('doWritePort_'+platForm)
+var doClosePort=eval('doClosePort_'+platForm)
+module.exports={
+	doConnect:doConnect,
+	doWritePort:doWritePort,
+	doClosePort:doClosePort}
 });
 
 
