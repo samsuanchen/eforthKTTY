@@ -11848,7 +11848,7 @@ var main = React.createClass({displayName: 'main',
       baud: 19200, 
       connect: false,
       system: "328eforth",
-      recieved:recieved};
+      recieved:new Buffer(0)};
   },
   render: function() {
     return (
@@ -11883,14 +11883,7 @@ var main = React.createClass({displayName: 'main',
   },
   onPortRecievedData:function(bytes) {
     console.log(Date(),this.state.port+": data recieved",bytes);
-    var u = new Uint8Array(bytes.data), recieved=this.state.recieved;
-    if (!recieved) {
-      recieved=u;
-    } else {
-      for (var i=0; i<u.length; i++) {
-        recieved.push(u[i]);
-      }
-    }
+    recieved=Buffer.concat([this.state.recieved,bytes],[2]);
     this.setState({'recieved':recieved});
   },
   onPortClosed:function() {
