@@ -11841,11 +11841,11 @@ var controlpanel=Require("controlpanel");
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
 var recieved, text, log, ok, command;
-var markInp=function(msg){ // ??????????????????????
-  return '<inp>'+msg+'</inp>';
+var markInp=function(msg){
+  return '<inp>'+msg+'</inp><br>';
 };
-var markOk=function(msg){ // ???????????????????????
-  return '<ok>'+msg.trim().substr(0,1)+'</ok>\n';
+var markOk=function(msg){
+  return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
 };
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
@@ -11859,7 +11859,7 @@ var main = React.createClass({displayName: 'main',
       getOk: false,
       ok: '',
       log: '',
-      recieved: null};
+      recieved: new Buffer(0)};
   },
   render: function() {
     return (
@@ -11898,6 +11898,7 @@ var main = React.createClass({displayName: 'main',
   },
   onPortRecievedData:function(bytes) {
     recieved=this.state.recieved || new Buffer(0);
+    log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
     if (bytes[bytes.length-1]===6) {
       text=recieved.toString();
@@ -11909,7 +11910,7 @@ var main = React.createClass({displayName: 'main',
         setTimeout( function() {
           that.sendCommand('');
           that.state.getOk=true;
-        },500);
+        },10);
       }
       if (!this.state.ok && this.state.getOk) {
         this.state.ok=ok=text;
@@ -11979,11 +11980,16 @@ var outputarea = React.createClass({displayName: 'outputarea',
     return {};
   },
   render: function() {
-    return ( 
-      React.DOM.div( {ref:"outputarea", className:"outputarea"}, 
-        this.props.log+
-         (this.props.recieved?this.props.recieved.toString():'')
-      )
+	var s=this.props.log+(this.props.recieved?this.props.recieved.toString():'');
+    return (
+    React.DOM.div( {ref:"outputarea", className:"outputarea",
+		dangerouslySetInnerHTML:{__html:s}})
+    //</div>
+    /*
+      <div ref="outputarea" className="outputarea">
+		{this.props.log+(this.props.recieved?this.props.recieved.toString():'')}
+      </div>
+      */
     );
   },
   componentDidUpdate:function() {

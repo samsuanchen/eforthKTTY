@@ -13,7 +13,7 @@ var markInp=function(msg){
 var markOk=function(msg){
   return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
 };
-var main = React.createClass({
+var main = React.createClass({displayName: 'main',
   getInitialState: function() {
     return {
       cmd: "WORDS",
@@ -29,23 +29,23 @@ var main = React.createClass({
   },
   render: function() {
     return (
-      <div>
-        port: {this.state.port}
-        baud: {this.state.baud}
-        system: {this.state.system}
-        connect: {this.state.connect.toString()}
-        <titlebar/>
-        <outputarea
-          log      ={this.state.log}
-          recieved ={this.state.recieved}/>
-        <controlpanel
-          onClose  ={this.  closePort}
-          onConnect={this.connectPort}
-          port     ={this.state.port}
-          baud     ={this.state.baud}
-          onExecute={this.sendCommand}/>
-        <statusbar/>
-      </div>
+      React.DOM.div(null, 
+        " port: ", this.state.port,
+        " baud: ", this.state.baud,
+        " system: ", this.state.system,
+        " connect: ", this.state.connect.toString(),
+        titlebar(null),
+        outputarea(
+          {log:      this.state.log,
+          recieved: this.state.recieved}),
+        controlpanel(
+          {onClose:  this.  closePort,
+          onConnect:this.connectPort,
+          port:     this.state.port,
+          baud:     this.state.baud,
+          onExecute:this.sendCommand}),
+        statusbar(null)
+      )
     );
   },
   onPortOpen:function(e) {

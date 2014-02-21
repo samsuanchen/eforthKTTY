@@ -7132,6 +7132,8 @@ div {
 	overflow-x: none;
 	background: #eee;
 }
+ok {color: green;}
+inp {color: blue;}
 .statusbar{margin-top: 6px;border: 1px solid fuchsia;
 	background: #fff;
 	text-align:center;}
