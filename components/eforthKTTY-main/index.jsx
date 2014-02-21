@@ -1,11 +1,18 @@
 /** @jsx React.DOM */
-
+// Component Specs and Lifecycle 須參考下列網址:
+// http://facebook.github.io/react/docs/component-specs.html
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
-var recieved;
+var recieved, text, log, ok, command;
+var markInp=function(msg){ // ??????????????????????
+  return '<inp>'+msg+'</inp>';
+};
+var markOk=function(msg){ // ???????????????????????
+  return '<ok>'+msg.trim().substr(0,1)+'</ok>\n';
+};
 var main = React.createClass({
   getInitialState: function() {
     return {
@@ -14,7 +21,11 @@ var main = React.createClass({
       baud: 19200, 
       connect: false,
       system: "328eforth",
-      recieved:new Buffer(0)};
+      command: '',
+      getOk: false,
+      ok: '',
+      log: '',
+      recieved: null};
   },
   render: function() {
     return (
@@ -22,15 +33,16 @@ var main = React.createClass({
         port: {this.state.port}
         baud: {this.state.baud}
         system: {this.state.system}
-        connect: {JSON.stringify(this.state.connect)}
+        connect: {this.state.connect.toString()}
         <titlebar/>
         <outputarea
+          log      ={this.state.log}
           recieved ={this.state.recieved}/>
         <controlpanel
           onClose  ={this.  closePort}
           onConnect={this.connectPort}
-          port={this.state.port}
-          baud={this.state.baud}
+          port     ={this.state.port}
+          baud     ={this.state.baud}
           onExecute={this.sendCommand}/>
         <statusbar/>
       </div>
@@ -46,11 +58,33 @@ var main = React.createClass({
   onPortOpened:function() {
     console.log(Date(),this.state.port+": opened");
     this.setState({'connect':true});
+    this.state.log='';
+    this.state.recieved=null;
+    window.onclose=this.closePort; // ???????????????
   },
   onPortRecievedData:function(bytes) {
-    console.log(Date(),this.state.port+": data recieved",bytes);
-    recieved=Buffer.concat([this.state.recieved,bytes],[2]);
-    this.setState({'recieved':recieved});
+    recieved=this.state.recieved || new Buffer(0);
+    recieved=Buffer.concat([recieved,bytes],[2]);
+    if (bytes[bytes.length-1]===6) {
+      text=recieved.toString();
+      recieved=new Buffer(0);
+      console.log(Date(),this.state.port+": data recieved",text);
+      if (!this.state.log) {
+        recieved=new Buffer(0);
+        var that=this;
+        setTimeout( function() {
+          that.sendCommand('');
+          that.state.getOk=true;
+        },500);
+      }
+      if (!this.state.ok && this.state.getOk) {
+        this.state.ok=ok=text;
+      }
+      if(command)text=text.replace(RegExp('^'+command),markInp(command));
+      if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
+      log=this.state.log+text;
+    }
+    this.setState({'recieved':recieved,'log':log});
   },
   onPortClosed:function() {
     console.log(Date(),this.state.port+": closed");
@@ -59,18 +93,20 @@ var main = React.createClass({
   onPortError:function(e) {
     console.log(Date(),this.state.port+": error",e);
   },
+// 開關 com port
   connectPort:function() {
-    if (this.state.connect) {
-      this.closePort();
-    }
-    else {
+    if (this.state.connect)
+      conn.doClosePort(this);
+    else
       conn.doConnect(this.onPortOpen,this.state.port,this.state.baud,this);
-    }
   },
+// 關閉 com port 
   closePort:function() {
     conn.doClosePort(this);
   },
+// 寫到 com port
   sendCommand:function(cmd) {
+    command=cmd;
     conn.doWritePort(cmd);
   }
 });

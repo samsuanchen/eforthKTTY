@@ -8,7 +8,7 @@ var inputarea = React.createClass({
   render: function() {
     return (
       <div>
-        <button onClick={this.sendcmd}>send cmd</button>
+        <button onClick={this.sendcmd}>sendCmd</button>
         <input size='80' ref="inputcmd" defaultValue={this.state.cmd}></input>
       </div>
     );

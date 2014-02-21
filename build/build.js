@@ -11833,13 +11833,20 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 });
 require.register("eforthKTTY-main/index.js", function(exports, require, module){
 /** @jsx React.DOM */
-
+// Component Specs and Lifecycle 須參考下列網址:
+// http://facebook.github.io/react/docs/component-specs.html
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
-var recieved;
+var recieved, text, log, ok, command;
+var markInp=function(msg){ // ??????????????????????
+  return '<inp>'+msg+'</inp>';
+};
+var markOk=function(msg){ // ???????????????????????
+  return '<ok>'+msg.trim().substr(0,1)+'</ok>\n';
+};
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
     return {
@@ -11848,7 +11855,11 @@ var main = React.createClass({displayName: 'main',
       baud: 19200, 
       connect: false,
       system: "328eforth",
-      recieved:new Buffer(0)};
+      command: '',
+      getOk: false,
+      ok: '',
+      log: '',
+      recieved: null};
   },
   render: function() {
     return (
@@ -11856,15 +11867,16 @@ var main = React.createClass({displayName: 'main',
         " port: ", this.state.port,
         " baud: ", this.state.baud,
         " system: ", this.state.system,
-        " connect: ", JSON.stringify(this.state.connect),
+        " connect: ", this.state.connect.toString(),
         titlebar(null),
         outputarea(
-          {recieved: this.state.recieved}),
+          {log:      this.state.log,
+          recieved: this.state.recieved}),
         controlpanel(
           {onClose:  this.  closePort,
           onConnect:this.connectPort,
-          port:this.state.port,
-          baud:this.state.baud,
+          port:     this.state.port,
+          baud:     this.state.baud,
           onExecute:this.sendCommand}),
         statusbar(null)
       )
@@ -11880,11 +11892,33 @@ var main = React.createClass({displayName: 'main',
   onPortOpened:function() {
     console.log(Date(),this.state.port+": opened");
     this.setState({'connect':true});
+    this.state.log='';
+    this.state.recieved=null;
+    window.onclose=this.closePort; // ???????????????
   },
   onPortRecievedData:function(bytes) {
-    console.log(Date(),this.state.port+": data recieved",bytes);
-    recieved=Buffer.concat([this.state.recieved,bytes],[2]);
-    this.setState({'recieved':recieved});
+    recieved=this.state.recieved || new Buffer(0);
+    recieved=Buffer.concat([recieved,bytes],[2]);
+    if (bytes[bytes.length-1]===6) {
+      text=recieved.toString();
+      recieved=new Buffer(0);
+      console.log(Date(),this.state.port+": data recieved",text);
+      if (!this.state.log) {
+        recieved=new Buffer(0);
+        var that=this;
+        setTimeout( function() {
+          that.sendCommand('');
+          that.state.getOk=true;
+        },500);
+      }
+      if (!this.state.ok && this.state.getOk) {
+        this.state.ok=ok=text;
+      }
+      if(command)text=text.replace(RegExp('^'+command),markInp(command));
+      if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
+      log=this.state.log+text;
+    }
+    this.setState({'recieved':recieved,'log':log});
   },
   onPortClosed:function() {
     console.log(Date(),this.state.port+": closed");
@@ -11893,18 +11927,20 @@ var main = React.createClass({displayName: 'main',
   onPortError:function(e) {
     console.log(Date(),this.state.port+": error",e);
   },
+// 開關 com port
   connectPort:function() {
-    if (this.state.connect) {
-      this.closePort();
-    }
-    else {
+    if (this.state.connect)
+      conn.doClosePort(this);
+    else
       conn.doConnect(this.onPortOpen,this.state.port,this.state.baud,this);
-    }
   },
+// 關閉 com port 
   closePort:function() {
     conn.doClosePort(this);
   },
+// 寫到 com port
   sendCommand:function(cmd) {
+    command=cmd;
     conn.doWritePort(cmd);
   }
 });
@@ -11921,7 +11957,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
   render: function() {
     return (
       React.DOM.div(null, 
-        React.DOM.button( {onClick:this.sendcmd}, "send cmd"),
+        React.DOM.button( {onClick:this.sendcmd}, "sendCmd"),
         React.DOM.input( {size:"80", ref:"inputcmd", defaultValue:this.state.cmd})
       )
     );
@@ -11937,16 +11973,22 @@ require.register("eforthKTTY-outputarea/index.js", function(exports, require, mo
 /** @jsx React.DOM */
 
 //var othercomponent=Require("other"); 
+var $=Require("jquery");
 var outputarea = React.createClass({displayName: 'outputarea',
   getInitialState: function() {
-    return {bar: "world"};
+    return {};
   },
   render: function() {
-    return (
-      React.DOM.div( {className:"outputarea"}, 
-        this.props.recieved?this.props.recieved.toString():''
+    return ( 
+      React.DOM.div( {ref:"outputarea", className:"outputarea"}, 
+        this.props.log+
+         (this.props.recieved?this.props.recieved.toString():'')
       )
     );
+  },
+  componentDidUpdate:function() {
+	$outputarea=$(this.refs.outputarea.getDOMNode());
+	$outputarea.scrollTop($outputarea[0].scrollHeight);
   }
 });
 module.exports=outputarea;
