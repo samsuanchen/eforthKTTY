@@ -2681,8 +2681,8 @@ input[type="button"].btn-block {
 
 @font-face {
   font-family: 'Glyphicons Halflings';
-  src: url("brighthas-bootstrap/dist/../fonts/glyphicons-halflings-regular.eot");
-  src: url("brighthas-bootstrap/dist/../fonts/glyphicons-halflings-regular.eot?#iefix") format('embedded-opentype'), url("brighthas-bootstrap/dist/../fonts/glyphicons-halflings-regular.woff") format('woff'), url("brighthas-bootstrap/dist/../fonts/glyphicons-halflings-regular.ttf") format('truetype'), url("brighthas-bootstrap/dist/../fonts/glyphicons-halflings-regular.svg#glyphicons-halflingsregular") format('svg');
+  src: url("brighthas-bootstrap/fonts/glyphicons-halflings-regular.eot");
+  src: url("brighthas-bootstrap/fonts/glyphicons-halflings-regular.eot?#iefix") format('embedded-opentype'), url("brighthas-bootstrap/fonts/glyphicons-halflings-regular.woff") format('woff'), url("brighthas-bootstrap/fonts/glyphicons-halflings-regular.ttf") format('truetype'), url("brighthas-bootstrap/fonts/glyphicons-halflings-regular.svg#glyphicons-halflingsregular") format('svg');
 }
 
 .glyphicon {
@@ -7147,5 +7147,6 @@ inp {color: blue;}
 .titlebar {text-align:center;font-size:150%;color:red;}
 .controlpanel {border: 1px solid fuchsia;}
 .connection {}
+
 
 #main {}

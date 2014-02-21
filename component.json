@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "keywords": [],
   "dependencies": {
-    "ksanaforge/boot": "*",
+    "dhammagear/boot": "*",
     "brighthas/bootstrap": "*",
     "component/jquery": "*",
     "eforthKTTY/main": "*",
@@ -14,7 +14,8 @@
     "eforthKTTY/statusbar": "*",
     "eforthKTTY/titlebar": "*",
     "eforthKTTY/controlpanel": "*",
-    "eforthKTTY/connection": "*"
+    "eforthKTTY/connection": "*",
+     "mquan/cortex": "*"
   },
   "development": {},
   "paths": [

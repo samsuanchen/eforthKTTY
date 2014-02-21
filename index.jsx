@@ -60,7 +60,7 @@ var main = React.createClass({
     this.setState({'connect':true});
     this.state.log='';
     this.state.recieved=null;
-    window.onclose=this.closePort;
+    window.onclose=this.closePort; // ???????????????
   },
   onPortRecievedData:function(bytes) {
     recieved=this.state.recieved || new Buffer(0);

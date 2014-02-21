@@ -1,0 +1,29 @@
+cd\
+git clone https://github.com/dhammagear/dev2014
+cd dev2014
+npm install
+
+git clone https://github.com/samsuanchen/eforthKTTY
+cd eforthKTTY
+copy ..\test\gulpfile.js
+gulp ==> grunt run
+
+gulp mkzip
+
+
+create new project
+
+mkdir app1
+cd app1
+git init
+cd ..
+dev2014>gulp newapp --name=app1
+cd app1
+dev2014/app1/>gulp newcomponent --name=comp1
+
+create mkzip.json in eforthKTTY
+
+module.exports={
+	"files": ["eforthKTTY/addtozip.txt"],
+	"repos" : ["node_modules/serialport"],
+}

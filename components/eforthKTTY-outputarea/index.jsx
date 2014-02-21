@@ -20,7 +20,7 @@ var outputarea = React.createClass({
     );
   },
   componentDidUpdate:function() {
-	$outputarea=$(this.refs.outputarea.getDOMNode());
+	var $outputarea=$(this.refs.outputarea.getDOMNode());
 	$outputarea.scrollTop($outputarea[0].scrollHeight);
   }
 });
