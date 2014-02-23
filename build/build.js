@@ -11879,7 +11879,8 @@ var main = React.createClass({displayName: 'main',
           {log:      this.state.log,
           recieved: this.state.recieved}),
         controlpanel(
-          {onClose:  this.  closePort,
+          {connect:  this.state.connect,
+          onClose:  this.  closePort,
           onConnect:this.connectPort,
           port:     this.state.port,
           baud:     this.state.baud,
@@ -12053,7 +12054,8 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
       React.DOM.div( {className:"controlpanel"}, 
         inputarea( {onExecute:this.props.onExecute}),
         connection(
-          {onClose:  this.props.onClose,  
+          {connect:  this.props.connect,
+          onClose:  this.props.onClose,  
           onConnect:this.props.onConnect,
           port:     this.props.port,
           baud:     this.props.baud})
@@ -12067,18 +12069,11 @@ require.register("eforthktty-connection/index.js", function(exports, require, mo
 /** @jsx React.DOM */
 //var othercomponent=Require("other"); 
 var connection = React.createClass({displayName: 'connection',
-  getInitialState: function() {
-    return {connect: false};
-  },
   render: function() {
-    if (this.state.connect) return (
+    var txt=this.props.connect?'close':'connect';
+    return (
       React.DOM.div(null, 
-        React.DOM.button( {onClick:this.doconnect}, "close")
-      )
-    );
-    else return (
-      React.DOM.div(null, 
-        React.DOM.button( {onClick:this.doconnect}, "connect")
+        React.DOM.button( {onClick:this.doconnect}, txt)
       )
     );
   },

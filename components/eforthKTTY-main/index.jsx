@@ -39,6 +39,7 @@ var main = React.createClass({
           log      ={this.state.log}
           recieved ={this.state.recieved}/>
         <controlpanel
+          connect  ={this.state.connect}
           onClose  ={this.  closePort}
           onConnect={this.connectPort}
           port     ={this.state.port}

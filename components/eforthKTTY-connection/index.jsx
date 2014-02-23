@@ -1,18 +1,11 @@
 /** @jsx React.DOM */
 //var othercomponent=Require("other"); 
 var connection = React.createClass({
-  getInitialState: function() {
-    return {connect: false};
-  },
   render: function() {
-    if (this.state.connect) return (
+    var txt=this.props.connect?'close':'connect';
+    return (
       <div>
-        <button onClick={this.doconnect}>close</button>
-      </div>
-    );
-    else return (
-      <div>
-        <button onClick={this.doconnect}>connect</button>
+        <button onClick={this.doconnect}>{txt}</button>
       </div>
     );
   },
