@@ -2,7 +2,7 @@
 var titlebar = React.createClass({
   render: function() {
     return (
-      <div className="titlebar">eForth TTY</div>
+      <div className="titlebar">eForth KTTY</div>
     );
   }
 });

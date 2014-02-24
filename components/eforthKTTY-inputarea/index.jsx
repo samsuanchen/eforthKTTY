@@ -2,6 +2,7 @@
 
 //var othercomponent=Require("other"); 
 var ENTER_KEY=13, ESCAPE_KEY=27;
+var $inputcmd
 var inputarea = React.createClass({
   getInitialState: function() {
     return {cmd: "WORDS"};
@@ -19,6 +20,10 @@ var inputarea = React.createClass({
       </div>
     );
   },
+  componentDidUpdate:function() {
+    $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
+    $inputcmd.focus();
+  },
   handleKeyDown: function (event) {
     var key=event.keyCode;
     if (key === ENTER_KEY) {
@@ -28,8 +33,8 @@ var inputarea = React.createClass({
     };
   },
   sendcmd:function() {
-    var cmd=this.refs.inputcmd.getDOMNode().value.trim();
-    this.props.onExecute(cmd);
+    $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
+    this.props.onExecute($inputcmd.value.trim());
   }
 });
 module.exports=inputarea;
