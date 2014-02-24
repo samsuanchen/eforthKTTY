@@ -11841,6 +11841,7 @@ require.register("eforthktty-main/index.js", function(exports, require, module){
 /** @jsx React.DOM */
 // Component Specs and Lifecycle 須參考下列網址:
 // http://facebook.github.io/react/docs/component-specs.html
+var fs=nodeRequire("fs"); 
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
@@ -11859,12 +11860,13 @@ var main = React.createClass({displayName: 'main',
       cmd: "WORDS",
       port: "COM32",
       baud: 19200, 
-      connect: false,
+      connecting: false,
       system: "328eforth",
       command: '',
       getOk: false,
       ok: '',
       log: '',
+      lastText: '',
       recieved: new Buffer(0)};
   },
   render: function() {
@@ -11873,13 +11875,14 @@ var main = React.createClass({displayName: 'main',
         " port: ", this.state.port,
         " baud: ", this.state.baud,
         " system: ", this.state.system,
-        " connect: ", this.state.connect.toString(),
+        " connecting: ", this.state.connecting.toString(),
         titlebar(null),
         outputarea(
           {log:      this.state.log,
+          lastText: this.state.lastText,
           recieved: this.state.recieved}),
         controlpanel(
-          {connect:  this.state.connect,
+          {connecting:  this.state.connecting,
           onClose:  this.  closePort,
           onConnect:this.connectPort,
           port:     this.state.port,
@@ -11898,7 +11901,7 @@ var main = React.createClass({displayName: 'main',
   },
   onPortOpened:function() {
     console.log(Date(),this.state.port+": opened");
-    this.setState({'connect':true});
+    this.setState({'connecting':true});
     this.state.log='';
     this.state.recieved=null;
     window.onclose=this.closePort;
@@ -11907,12 +11910,11 @@ var main = React.createClass({displayName: 'main',
     recieved=this.state.recieved || new Buffer(0);
     log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
+    text=recieved.toString();
     if (bytes[bytes.length-1]===6) {
-      text=recieved.toString();
       recieved=new Buffer(0);
       console.log(Date(),this.state.port+": data recieved",text);
       if (!this.state.log) {
-        recieved=new Buffer(0);
         var that=this;
         setTimeout( function() {
           that.sendCommand('');
@@ -11924,20 +11926,21 @@ var main = React.createClass({displayName: 'main',
       }
       if(command)text=text.replace(RegExp('^'+command),markInp(command));
       if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
-      log=this.state.log+text;
+      log+=text;
+      text='';
     }
-    this.setState({'recieved':recieved,'log':log});
+    this.setState({'lastText':text,'log':log, 'recieved':recieved});
   },
   onPortClosed:function() {
     console.log(Date(),this.state.port+": closed");
-    this.setState({'connect':false});
+    this.setState({'connecting':false});
   },
   onPortError:function(e) {
     console.log(Date(),this.state.port+": error",e);
   },
 // 開關 com port
   connectPort:function() {
-    if (this.state.connect)
+    if (this.state.connecting)
       conn.doClosePort(this);
     else
       conn.doConnect(this.onPortOpen,this.state.port,this.state.baud,this);
@@ -11987,7 +11990,7 @@ var outputarea = React.createClass({displayName: 'outputarea',
     return {};
   },
   render: function() {
-	var s=this.props.log+(this.props.recieved?this.props.recieved.toString():'');
+	var s=this.props.log+this.props.lastText;
     return (
     React.DOM.div( {ref:"outputarea", className:"outputarea",
 		dangerouslySetInnerHTML:{__html:s}})
@@ -12054,7 +12057,7 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
       React.DOM.div( {className:"controlpanel"}, 
         inputarea( {onExecute:this.props.onExecute}),
         connection(
-          {connect:  this.props.connect,
+          {connecting:  this.props.connecting,
           onClose:  this.props.onClose,  
           onConnect:this.props.onConnect,
           port:     this.props.port,
@@ -12069,11 +12072,18 @@ require.register("eforthktty-connection/index.js", function(exports, require, mo
 /** @jsx React.DOM */
 //var othercomponent=Require("other"); 
 var connection = React.createClass({displayName: 'connection',
-  render: function() {
-    var txt=this.props.connect?'close':'connect';
+  render: function() { var txt, flg;
+    if (this.props.connecting) {
+      txt='close';
+      flg='warning';
+    } else {
+      txt='connect';
+      flg='normal';
+    }
+    var txt=this.props.connecting?'close':'connect';
     return (
       React.DOM.div(null, 
-        React.DOM.button( {onClick:this.doconnect}, txt)
+        React.DOM.button( {className:flg, onClick:this.doconnect}, txt)
       )
     );
   },

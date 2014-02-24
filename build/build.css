@@ -7134,19 +7134,11 @@ div {
 }
 ok {color: green;}
 inp {color: blue;}
-.statusbar{margin-top: 6px;border: 1px solid fuchsia;
-	background: #fff;
-	text-align:center;}
-	.labBytes {
-		margin-top: 0px;
-		margin-right: 420px;
-	}
-	.labConn {
-		margin-top:0px;
-	}
-.titlebar {text-align:center;font-size:150%;color:red;}
+
+.titlebar {text-align:center;font-size:150%;color:green;}
 .controlpanel {border: 1px solid fuchsia;}
-.connection {}
+.warning {color:red;}
+.normal{color:green;}
 
 
 #main {}

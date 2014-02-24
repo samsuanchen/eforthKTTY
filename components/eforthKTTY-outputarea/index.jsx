@@ -7,7 +7,7 @@ var outputarea = React.createClass({
     return {};
   },
   render: function() {
-	var s=this.props.log+(this.props.recieved?this.props.recieved.toString():'');
+	var s=this.props.log+this.props.lastText;
     return (
     <div ref="outputarea" className="outputarea"
 		dangerouslySetInnerHTML={{__html:s}}/>
