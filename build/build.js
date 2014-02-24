@@ -11854,6 +11854,15 @@ var markInp=function(msg){
 var markOk=function(msg){
   return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
 };
+var connectingState = React.createClass({displayName: 'connectingState',
+  render: function() {
+    return (
+      React.DOM.span( {className:this.props.className}, 
+        this.props.connecting.toString()
+      )
+    );
+  }
+});
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
     return {
@@ -11870,19 +11879,23 @@ var main = React.createClass({displayName: 'main',
       recieved: new Buffer(0)};
   },
   render: function() {
+    var connecting=this.state.connecting;
+    var className=connecting?'ready':'notReady';
     return (
       React.DOM.div(null, 
         " port: ", this.state.port,
         " baud: ", this.state.baud,
         " system: ", this.state.system,
-        " connecting: ", this.state.connecting.toString(),
+        " connecting: ", connectingState(
+                      {className:className,
+                      connecting:connecting}),
         titlebar(null),
         outputarea(
           {log:      this.state.log,
           lastText: this.state.lastText,
           recieved: this.state.recieved}),
         controlpanel(
-          {connecting:  this.state.connecting,
+          {connecting:  connecting,
           onClose:  this.  closePort,
           onConnect:this.connectPort,
           port:     this.state.port,
@@ -11961,6 +11974,7 @@ require.register("eforthktty-inputarea/index.js", function(exports, require, mod
 /** @jsx React.DOM */
 
 //var othercomponent=Require("other"); 
+var ENTER_KEY=13, ESCAPE_KEY=27;
 var inputarea = React.createClass({displayName: 'inputarea',
   getInitialState: function() {
     return {cmd: "WORDS"};
@@ -11969,12 +11983,25 @@ var inputarea = React.createClass({displayName: 'inputarea',
     return (
       React.DOM.div(null, 
         React.DOM.button( {onClick:this.sendcmd}, "sendCmd"),
-        React.DOM.input( {size:"80", ref:"inputcmd", defaultValue:this.state.cmd})
+        React.DOM.input(
+          {onKeyDown:this.handleKeyDown,
+          size:"80",
+          ref:"inputcmd",
+          defaultValue:this.state.cmd}
+        )
       )
     );
   },
+  handleKeyDown: function (event) {
+    var key=event.keyCode;
+    if (key === ENTER_KEY) {
+      this.sendcmd();
+    } else if (key === ESCAPE_KEY) {
+      this.props.onExecute(String.fromCharCode(key));
+    };
+  },
   sendcmd:function() {
-    var cmd=this.refs.inputcmd.getDOMNode().value;
+    var cmd=this.refs.inputcmd.getDOMNode().value.trim();
     this.props.onExecute(cmd);
   }
 });

@@ -7117,10 +7117,8 @@ td.visible-print {
   }
 }
 
-.main {}
-div {
-	
-}
+.ready {color:green;}
+.notReady {color:red;}
 .inputarea {}
 #inputcmd{size:80;}
 .outputarea {border: 1px solid fuchsia;

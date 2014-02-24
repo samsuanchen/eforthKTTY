@@ -14,6 +14,15 @@ var markInp=function(msg){
 var markOk=function(msg){
   return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
 };
+var connectingState = React.createClass({
+  render: function() {
+    return (
+      <span className={this.props.className}>
+        {this.props.connecting.toString()}
+      </span>
+    );
+  }
+});
 var main = React.createClass({
   getInitialState: function() {
     return {
@@ -30,19 +39,23 @@ var main = React.createClass({
       recieved: new Buffer(0)};
   },
   render: function() {
+    var connecting=this.state.connecting;
+    var className=connecting?'ready':'notReady';
     return (
       <div>
         port: {this.state.port}
         baud: {this.state.baud}
         system: {this.state.system}
-        connecting: {this.state.connecting.toString()}
+        connecting: <connectingState
+                      className={className}
+                      connecting={connecting}/>
         <titlebar/>
         <outputarea
           log      ={this.state.log}
           lastText ={this.state.lastText}
           recieved ={this.state.recieved}/>
         <controlpanel
-          connecting  ={this.state.connecting}
+          connecting  ={connecting}
           onClose  ={this.  closePort}
           onConnect={this.connectPort}
           port     ={this.state.port}
