@@ -9,7 +9,7 @@ var statusbar=Require("statusbar");
 var conn=Require("eforthKTTY/conn");
 var recieved, text, log, ok, command;
 var markInp=function(msg){
-  return '<inp>'+msg+'</inp><br>';
+  return '<inp>'+msg+'</inp>';
 };
 var markOk=function(msg){
   return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
@@ -99,17 +99,21 @@ var main = React.createClass({
       }
       if(command)text=text.replace(RegExp('^'+command),markInp(command));
       if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
+      if(log)
+        text=text.replace(/(\r\n)+/g,'<br>');
+      else
+        text=text.replace(/^(\r\n){2,}/,'<br>');
       log+=text;
       text='';
     }
     this.setState({'lastText':text,'log':log, 'recieved':recieved});
   },
+  onPortError:function(e) {
+    console.log(Date(),this.state.port+": error",e);
+  },
   onPortClosed:function() {
     console.log(Date(),this.state.port+": closed");
     this.setState({'connecting':false});
-  },
-  onPortError:function(e) {
-    console.log(Date(),this.state.port+": error",e);
   },
 // 開關 com port
   connectPort:function() {
