@@ -7,12 +7,14 @@ var outputarea=Require("outputarea");
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
-var recieved, text, log, ok, command;
+var recieved, text, log, ok, command, fileName, lines, lineIndex;
+var lastByte;
+var ACK_KEY=6;
 var markInp=function(msg){
   return '<inp>'+msg+'</inp>';
 };
 var markOk=function(msg){
-  return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
+  return ' <ok>'+msg.trim().substr(0,1)+'</ok>\r\n';
 };
 var connectingState = React.createClass({
   render: function() {
@@ -56,37 +58,42 @@ var main = React.createClass({
           recieved ={this.state.recieved}/>
         <controlpanel
           connecting  ={connecting}
-          onClose  ={this.  closePort}
+          onClose  ={this.closePort}
           onConnect={this.connectPort}
           port     ={this.state.port}
           baud     ={this.state.baud}
-          onExecute={this.sendCommand}/>
+          system   ={this.state.system}
+          onExecute={this.sendCommand}
+          onXfer   ={this.sendFile}/>
         <statusbar/>
       </div>
     );
   },
   onPortOpen:function(e) {
     if (e) {
-      console.log(Date(),this.state.port+": openfail",e.message);
+      console.log(Date(),this.state.port,"openfailed:",e.message);
       return;
     }
     this.onPortOpened();
   },
   onPortOpened:function() {
-    console.log(Date(),this.state.port+": opened");
+    console.log(Date(),this.state.port,"opened");
     this.setState({'connecting':true});
     this.state.log='';
     this.state.recieved=null;
     window.onclose=this.closePort;
   },
   onPortRecievedData:function(bytes) {
+    lastByte=bytes[bytes.length-1];
+    console.log(Date(),this.state.port,"bytes recieved:",bytes);
     recieved=this.state.recieved || new Buffer(0);
     log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
     text=recieved.toString();
-    if (bytes[bytes.length-1]===6) {
+    if(command)text=text.replace(RegExp('^'+command),markInp(command));
+    if (lastByte===ACK_KEY) {
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port+": data recieved",text);
+      console.log(Date(),this.state.port,"text recieved:",text);
       if (!this.state.log) {
         var that=this;
         setTimeout( function() {
@@ -97,22 +104,31 @@ var main = React.createClass({
       if (!this.state.ok && this.state.getOk) {
         this.state.ok=ok=text;
       }
-      if(command)text=text.replace(RegExp('^'+command),markInp(command));
       if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
-      if(log)
-        text=text.replace(/(\r\n)+/g,'<br>');
-      else
-        text=text.replace(/^(\r\n){2,}/,'<br>');
+      text=text.replace(/^(\r\n)+/,'')
+               .replace(/(\r\n)+\r\x06$/,'\r\n')
+               .replace(/(\r\n)+/g,'\r\n');
       log+=text;
       text='';
+      if (fileName) {
+        if (lineIndex<lines.length) {
+          console.log("line",lineIndex,lines[lineIndex]);
+          var that=this;
+          setTimeout( function() {
+            that.sendCommand(lines[lineIndex++]);
+          },50);
+        } else if (lineIndex) {
+          console.log(Date(),this.state.port,"end of",fileName);
+        }
+      }
     }
     this.setState({'lastText':text,'log':log, 'recieved':recieved});
   },
   onPortError:function(e) {
-    console.log(Date(),this.state.port+": error",e);
+    console.log(Date(),this.state.port,"error",e);
   },
   onPortClosed:function() {
-    console.log(Date(),this.state.port+": closed");
+    console.log(Date(),this.state.port,"closed");
     this.setState({'connecting':false});
   },
 // 開關 com port
@@ -125,11 +141,28 @@ var main = React.createClass({
 // 關閉 com port 
   closePort:function() {
     conn.doClosePort(this);
+    fileName='';
+    lines=[];
+    lineIndex=0;
   },
 // 寫到 com port
   sendCommand:function(cmd) {
+    console.log(Date(),this.state.port,"sendCommand:",cmd);
     command=cmd;
     conn.doWritePort(cmd);
+  },
+// 寫到 com port
+  sendFile:function(file) {
+    console.log(Date(),this.state.port,"sendFile:",file);
+    fileName=file;
+    lines=fs.readFileSync(fileName).toString().split('\r\n');
+    if (lines.length) {
+      console.log(Date(),this.state.port,"start of",fileName);
+      lineIndex=0;
+      this.sendCommand(lines[lineIndex++]);
+    } else {
+      console.log(Date(),this.state.port,"empty",fileName);
+    }
   }
 });
 module.exports=main;

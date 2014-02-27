@@ -9,13 +9,16 @@ var controlpanel = React.createClass({
   render: function() {
     return (
       <div className='controlpanel'>
-        <inputarea onExecute={this.props.onExecute}/>
+        <inputarea
+          system    ={this.props.system}
+          onXfer    ={this.props.onXfer}
+          onExecute ={this.props.onExecute}/>
         <connection
-          connecting  ={this.props.connecting}
-          onClose  ={this.props.onClose  }
-          onConnect={this.props.onConnect}
-          port     ={this.props.port}
-          baud     ={this.props.baud}/>
+          connecting={this.props.connecting}
+          onClose   ={this.props.onClose  }
+          onConnect ={this.props.onConnect}
+          port      ={this.props.port}
+          baud      ={this.props.baud}/>
       </div>
     );
   }

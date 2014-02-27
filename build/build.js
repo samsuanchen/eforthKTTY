@@ -11847,12 +11847,14 @@ var outputarea=Require("outputarea");
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
-var recieved, text, log, ok, command;
+var recieved, text, log, ok, command, fileName, lines, lineIndex;
+var lastByte;
+var ACK_KEY=6;
 var markInp=function(msg){
   return '<inp>'+msg+'</inp>';
 };
 var markOk=function(msg){
-  return ' <ok>'+msg.trim().substr(0,1)+'</ok><br>\n';
+  return ' <ok>'+msg.trim().substr(0,1)+'</ok>\r\n';
 };
 var connectingState = React.createClass({displayName: 'connectingState',
   render: function() {
@@ -11896,37 +11898,42 @@ var main = React.createClass({displayName: 'main',
           recieved: this.state.recieved}),
         controlpanel(
           {connecting:  connecting,
-          onClose:  this.  closePort,
+          onClose:  this.closePort,
           onConnect:this.connectPort,
           port:     this.state.port,
           baud:     this.state.baud,
-          onExecute:this.sendCommand}),
+          system:   this.state.system,
+          onExecute:this.sendCommand,
+          onXfer:   this.sendFile}),
         statusbar(null)
       )
     );
   },
   onPortOpen:function(e) {
     if (e) {
-      console.log(Date(),this.state.port+": openfail",e.message);
+      console.log(Date(),this.state.port,"openfailed:",e.message);
       return;
     }
     this.onPortOpened();
   },
   onPortOpened:function() {
-    console.log(Date(),this.state.port+": opened");
+    console.log(Date(),this.state.port,"opened");
     this.setState({'connecting':true});
     this.state.log='';
     this.state.recieved=null;
     window.onclose=this.closePort;
   },
   onPortRecievedData:function(bytes) {
+    lastByte=bytes[bytes.length-1];
+    console.log(Date(),this.state.port,"bytes recieved:",bytes);
     recieved=this.state.recieved || new Buffer(0);
     log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
     text=recieved.toString();
-    if (bytes[bytes.length-1]===6) {
+    if(command)text=text.replace(RegExp('^'+command),markInp(command));
+    if (lastByte===ACK_KEY) {
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port+": data recieved",text);
+      console.log(Date(),this.state.port,"text recieved:",text);
       if (!this.state.log) {
         var that=this;
         setTimeout( function() {
@@ -11937,22 +11944,31 @@ var main = React.createClass({displayName: 'main',
       if (!this.state.ok && this.state.getOk) {
         this.state.ok=ok=text;
       }
-      if(command)text=text.replace(RegExp('^'+command),markInp(command));
       if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
-      if(log)
-        text=text.replace(/(\r\n)+/g,'<br>');
-      else
-        text=text.replace(/^(\r\n){2,}/,'<br>');
+      text=text.replace(/^(\r\n)+/,'')
+               .replace(/(\r\n)+\r\x06$/,'\r\n')
+               .replace(/(\r\n)+/g,'\r\n');
       log+=text;
       text='';
+      if (fileName) {
+        if (lineIndex<lines.length) {
+          console.log("line",lineIndex,lines[lineIndex]);
+          var that=this;
+          setTimeout( function() {
+            that.sendCommand(lines[lineIndex++]);
+          },50);
+        } else if (lineIndex) {
+          console.log(Date(),this.state.port,"end of",fileName);
+        }
+      }
     }
     this.setState({'lastText':text,'log':log, 'recieved':recieved});
   },
   onPortError:function(e) {
-    console.log(Date(),this.state.port+": error",e);
+    console.log(Date(),this.state.port,"error",e);
   },
   onPortClosed:function() {
-    console.log(Date(),this.state.port+": closed");
+    console.log(Date(),this.state.port,"closed");
     this.setState({'connecting':false});
   },
 // 開關 com port
@@ -11965,11 +11981,28 @@ var main = React.createClass({displayName: 'main',
 // 關閉 com port 
   closePort:function() {
     conn.doClosePort(this);
+    fileName='';
+    lines=[];
+    lineIndex=0;
   },
 // 寫到 com port
   sendCommand:function(cmd) {
+    console.log(Date(),this.state.port,"sendCommand:",cmd);
     command=cmd;
     conn.doWritePort(cmd);
+  },
+// 寫到 com port
+  sendFile:function(file) {
+    console.log(Date(),this.state.port,"sendFile:",file);
+    fileName=file;
+    lines=fs.readFileSync(fileName).toString().split('\r\n');
+    if (lines.length) {
+      console.log(Date(),this.state.port,"start of",fileName);
+      lineIndex=0;
+      this.sendCommand(lines[lineIndex++]);
+    } else {
+      console.log(Date(),this.state.port,"empty",fileName);
+    }
   }
 });
 module.exports=main;
@@ -11978,21 +12011,31 @@ require.register("eforthktty-inputarea/index.js", function(exports, require, mod
 /** @jsx React.DOM */
 
 //var othercomponent=Require("other"); 
-var ENTER_KEY=13, ESCAPE_KEY=27;
-var $inputcmd
+var ENTER_KEY=13, ESCAPE_KEY=27, CONTROL_Q_KEY=17, CONTROL_Z_KEY=26;
+var CONTROL_KEY=[CONTROL_Q_KEY, CONTROL_Z_KEY];
+var UP_KEY=38, DOWN_KEY=40
+var $inputcmd, $inputfile, cmd, cmdLine=[], lineIndex=0;
 var inputarea = React.createClass({displayName: 'inputarea',
   getInitialState: function() {
-    return {cmd: "WORDS"};
+    return {cmd: "WORDS", file: "test.f"};
   },
   render: function() {
     return (
       React.DOM.div(null, 
         React.DOM.button( {onClick:this.sendcmd}, "sendCmd"),
-        React.DOM.input(
-          {onKeyDown:this.handleKeyDown,
-          size:"80",
+        React.DOM.textarea(
+          {onKeyDown:this.cmdKeyDown,
+          onPaste:this.cmdPaste,
+          cols:"80",
+          rows:"1",
           ref:"inputcmd",
-          defaultValue:this.state.cmd}
+          defaultValue:this.state.cmd}),
+        React.DOM.button( {onClick:this.sendfile}, "sendFile"),
+        React.DOM.input(
+          {onKeyDown:this.fileKeyDown,
+          size:"60",
+          ref:"inputfile",
+          defaultValue:this.state.file}
         )
       )
     );
@@ -12001,17 +12044,75 @@ var inputarea = React.createClass({displayName: 'inputarea',
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
     $inputcmd.focus();
   },
-  handleKeyDown: function (event) {
-    var key=event.keyCode;
+  prevLine: function () {
+    if (lineIndex) {
+      $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
+      if (lineIndex===cmdLine.length) cmd=$inputcmd.value;
+      $inputcmd.value=cmdLine[--lineIndex];
+    }
+  },
+  nextLine: function () {
+    var c;
+    if (lineIndex<cmdLine.length) {
+      ++lineIndex;
+      $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
+      c= lineIndex===cmdLine.length?cmd:cmdLine[lineIndex];
+      $inputcmd.value=c;
+    }
+  },
+  cmdPaste: function (event) {
+    var that=this;
+    setTimeout(function(){
+      $inputcmd=$inputcmd||that.refs.inputcmd.getDOMNode();
+      var line=$inputcmd.value.split(/\r?\n/);
+      cmdLine=cmdLine.concat(line);
+      $inputcmd.value=line[0];
+      console.log(cmdLine.length,'lines','pasted')
+    },0); // defer the handler to the next event
+  },
+  cmdKeyDown: function (event) {
+    var key=event.keyCode, ctrl=event.ctrlKey;
+    if (key===16||key===17) return;
+    if (key===UP_KEY) {
+      this.prevLine();
+      return;
+    }
+    if (key===DOWN_KEY) {
+      this.nextLine();
+      return;
+    }
+    if (ctrl) {
+      key-=0x40;
+    }
     if (key === ENTER_KEY) {
       this.sendcmd();
     } else if (key === ESCAPE_KEY) {
       this.props.onExecute(String.fromCharCode(key));
+    } else if (CONTROL_KEY.indexOf(key)>=0) {
+      this.props.onExecute(String.fromCharCode(key));
+    };
+  },
+  fileKeyDown: function (event) {
+    var key=event.keyCode;
+    if (key === ENTER_KEY) {
+      this.sendfile();
     };
   },
   sendcmd:function() {
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
-    this.props.onExecute($inputcmd.value.trim());
+    cmd=$inputcmd.value;
+    $inputcmd.value='';
+    if (cmdLine.length && (lineIndex=cmdLine.indexOf(cmd))>=0) {
+      cmdLine=cmdLine.slice(0,lineIndex-1).concat(cmdLine.slice(lineIndex+1))
+    }
+    cmdLine.push(cmd);
+    lineIndex=cmdLine.length;
+    this.props.onExecute(cmd);
+  },
+  sendfile:function() {
+    $inputfile=$inputfile||this.refs.inputfile.getDOMNode();
+    var file=this.props.system+'/'+$inputfile.value.trim();
+    this.props.onXfer(file);
   }
 });
 module.exports=inputarea;
@@ -12028,7 +12129,7 @@ var outputarea = React.createClass({displayName: 'outputarea',
   render: function() {
 	var s=this.props.log+this.props.lastText;
     return (
-    React.DOM.div( {ref:"outputarea", className:"outputarea",
+    React.DOM.pre( {ref:"outputarea", className:"outputarea",
 		dangerouslySetInnerHTML:{__html:s}})
     //</div>
     /*
@@ -12091,13 +12192,16 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
   render: function() {
     return (
       React.DOM.div( {className:"controlpanel"}, 
-        inputarea( {onExecute:this.props.onExecute}),
+        inputarea(
+          {system:    this.props.system,
+          onXfer:    this.props.onXfer,
+          onExecute: this.props.onExecute}),
         connection(
-          {connecting:  this.props.connecting,
-          onClose:  this.props.onClose,  
-          onConnect:this.props.onConnect,
-          port:     this.props.port,
-          baud:     this.props.baud})
+          {connecting:this.props.connecting,
+          onClose:   this.props.onClose,  
+          onConnect: this.props.onConnect,
+          port:      this.props.port,
+          baud:      this.props.baud})
       )
     );
   }

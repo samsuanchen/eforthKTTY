@@ -7124,11 +7124,11 @@ td.visible-print {
 .outputarea {border: 1px solid fuchsia;
 	margin-top:0px;
 	width: 622px;
-    height: 384px;
+    height: 392px;
 	overflow: auto;
 	overflow-y: auto;
 	overflow-x: none;
-	background: #eee;
+	background: #f0f0f0;
 }
 ok {color: green;}
 inp {color: blue;}

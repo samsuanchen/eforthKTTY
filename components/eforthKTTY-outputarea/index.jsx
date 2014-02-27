@@ -9,7 +9,7 @@ var outputarea = React.createClass({
   render: function() {
 	var s=this.props.log+this.props.lastText;
     return (
-    <div ref="outputarea" className="outputarea"
+    <pre ref="outputarea" className="outputarea"
 		dangerouslySetInnerHTML={{__html:s}}/>
     //</div>
     /*
