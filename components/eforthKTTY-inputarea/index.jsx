@@ -15,7 +15,7 @@ var inputarea = React.createClass({
         <button onClick={this.sendcmd}>sendCmd</button>
         <textarea
           onKeyDown={this.cmdKeyDown}
-          onPaste={this.cmdPaste}
+          onPaste={this.props.onPasted}
           cols='80'
           rows='1'
           ref="inputcmd"
@@ -50,16 +50,6 @@ var inputarea = React.createClass({
       $inputcmd.value=c;
     }
   },
-  cmdPaste: function (event) {
-    var that=this;
-    setTimeout(function(){
-      $inputcmd=$inputcmd||that.refs.inputcmd.getDOMNode();
-      var line=$inputcmd.value.split(/\r?\n/);
-      cmdLine=cmdLine.concat(line);
-      $inputcmd.value=line[0];
-      console.log(cmdLine.length,'lines','pasted')
-    },0); // defer the handler to the next event
-  },
   cmdKeyDown: function (event) {
     var key=event.keyCode, ctrl=event.ctrlKey;
     if (key===16||key===17) return;
@@ -91,13 +81,13 @@ var inputarea = React.createClass({
   sendcmd:function() {
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
     cmd=$inputcmd.value;
-    $inputcmd.value='';
     if (cmdLine.length && (lineIndex=cmdLine.indexOf(cmd))>=0) {
-      cmdLine=cmdLine.slice(0,lineIndex-1).concat(cmdLine.slice(lineIndex+1))
+      cmdLine=cmdLine.slice(0,lineIndex).concat(cmdLine.slice(lineIndex+1))
     }
     cmdLine.push(cmd);
     lineIndex=cmdLine.length;
     this.props.onExecute(cmd);
+    $inputcmd.value='';
   },
   sendfile:function() {
     $inputfile=$inputfile||this.refs.inputfile.getDOMNode();

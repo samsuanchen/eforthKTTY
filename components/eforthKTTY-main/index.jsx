@@ -64,6 +64,7 @@ var main = React.createClass({
           baud     ={this.state.baud}
           system   ={this.state.system}
           onExecute={this.sendCommand}
+          onPasted ={this.sendPasted}
           onXfer   ={this.sendFile}/>
         <statusbar/>
       </div>
@@ -85,7 +86,7 @@ var main = React.createClass({
   },
   onPortRecievedData:function(bytes) {
     lastByte=bytes[bytes.length-1];
-    console.log(Date(),this.state.port,"bytes recieved:",bytes);
+    console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=this.state.recieved || new Buffer(0);
     log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
@@ -110,16 +111,16 @@ var main = React.createClass({
                .replace(/(\r\n)+/g,'\r\n');
       log+=text;
       text='';
-      if (fileName) {
-        if (lineIndex<lines.length) {
-          console.log("line",lineIndex,lines[lineIndex]);
-          var that=this;
-          setTimeout( function() {
-            that.sendCommand(lines[lineIndex++]);
-          },50);
-        } else if (lineIndex) {
-          console.log(Date(),this.state.port,"end of",fileName);
-        }
+      if (lines&&lineIndex<lines.length) {
+        console.log("line",lineIndex,lines[lineIndex]);
+        var that=this;
+        setTimeout( function() {
+          that.sendCommand(lines[lineIndex++]);
+        },50);
+      } else if (lineIndex) {
+        var file=fileName?fileName:'pasted lines';
+        console.log(Date(),this.state.port,"end of",file);
+        fileName='';
       }
     }
     this.setState({'lastText':text,'log':log, 'recieved':recieved});
@@ -150,6 +151,16 @@ var main = React.createClass({
     console.log(Date(),this.state.port,"sendCommand:",cmd);
     command=cmd;
     conn.doWritePort(cmd);
+  },
+  sendPasted: function (event) {
+    var that=this, target=event.target;
+    setTimeout(function(){
+      lines=target.value.split(/\r?\n/);
+      console.log(Date(),that.state.port,"sendPasted",lines.length,"line(s)");
+      lineIndex=0;
+      that.sendCommand(lines[lineIndex++]);
+      target.value='';
+    },0); // defer the handler to the next event
   },
 // 寫到 com port
   sendFile:function(file) {
