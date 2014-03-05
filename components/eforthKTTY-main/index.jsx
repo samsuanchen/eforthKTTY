@@ -1,7 +1,6 @@
 /** @jsx React.DOM */
 // Component Specs and Lifecycle 須參考下列網址:
 // http://facebook.github.io/react/docs/component-specs.html
-var fs=nodeRequire("fs"); 
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
@@ -10,11 +9,22 @@ var conn=Require("eforthKTTY/conn");
 var recieved, text, log, ok, command, fileName, lines, lineIndex;
 var lastByte;
 var ACK_KEY=6;
-var markInp=function(msg){
-  return '<inp>'+msg+'</inp>';
+var markInp=function(text,inp){
+  var p=RegExp('^'+inp
+    .replace(/\\/g,'\\\\').replace(/\t/g," ")
+    .replace(/\|/g,'\\|').replace(/\'/g,"\\'")
+    .replace(/\./g,'\\.').replace(/\?/g,'\\?')
+    .replace(/\+/g,'\\+').replace(/\*/g,'\\*')
+    .replace(/\^/g,'\\^').replace(/\$/g,'\\$')
+    .replace(/\[/g,'\\[').replace(/\]/g,'\\]')
+    .replace(/\(/g,'\\(').replace(/\)/g,'\\)')
+    .replace(/\{/g,'\\{').replace(/\}/g,'\\}')
+  );
+  return text.replace(p,'<inp>'+inp+'</inp>');
 };
-var markOk=function(msg){
-  return ' <ok>'+msg.trim().substr(0,1)+'</ok>\r\n';
+var markOk=function(text,ok){
+  var p=RegExp(ok+'$');
+  return text.replace(p,' <ok>'+ok.trim().substr(0,1)+'</ok>\r\n');
 };
 var connectingState = React.createClass({
   render: function() {
@@ -91,7 +101,7 @@ var main = React.createClass({
     log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
     text=recieved.toString();
-    if(command)text=text.replace(RegExp('^'+command),markInp(command));
+    if(command)text=markInp(text,command);
     if (lastByte===ACK_KEY) {
       recieved=new Buffer(0);
       console.log(Date(),this.state.port,"text recieved:",text);
@@ -105,7 +115,7 @@ var main = React.createClass({
       if (!this.state.ok && this.state.getOk) {
         this.state.ok=ok=text;
       }
-      if(ok)text=text.replace(RegExp(ok+'$'),markOk(ok));
+      if(ok)text=markOk(text,ok);
       text=text.replace(/^(\r\n)+/,'')
                .replace(/(\r\n)+\r\x06$/,'\r\n')
                .replace(/(\r\n)+/g,'\r\n');
@@ -166,7 +176,7 @@ var main = React.createClass({
   sendFile:function(file) {
     console.log(Date(),this.state.port,"sendFile:",file);
     fileName=file;
-    lines=fs.readFileSync(fileName).toString().split('\r\n');
+    lines=conn.readFile(fileName);
     if (lines.length) {
       console.log(Date(),this.state.port,"start of",fileName);
       lineIndex=0;

@@ -37,8 +37,12 @@ var doConnect_chrome=function(onPortOpen,that) {
 var doConnect  =eval('doConnect_'  +platForm)
 var doWritePort=eval('doWritePort_'+platForm)
 var doClosePort=eval('doClosePort_'+platForm)
-
+var fs=nodeRequire("fs")
+var readFile=function(fileName) {
+	return fs.readFileSync(fileName).toString().split('\r\n');
+}
 module.exports={
+	readFile:readFile,
 	doConnect:doConnect,
 	doWritePort:doWritePort,
 	doClosePort:doClosePort}

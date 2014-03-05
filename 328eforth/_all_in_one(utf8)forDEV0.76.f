@@ -1,4 +1,5 @@
 \ _all_in_one(utf8)forDEV0.76.f 20131125
+\ 20140305 改 FORGET A.
 \ 20140102 改 FORGET Forget
 \ 20131230 增 NOOP
 \ 20131210 增 BIG5 UTF8 改 ANEW
@@ -156,7 +157,7 @@ $9508 CONSTANT INS_RET
 ' ."|     CONSTANT (.") 
 ' doVAR   CONSTANT (CON)
 : H. ( v -- ) <# #S #> TYPE ; 
-: A. ( a -- ) 2/ <# # # # # # # #> TYPE ;
+: A. ( a -- ) DUP <# # # # # # # #> SPACE 2/ <# # # # # # # #> TYPE ;
 : H.R ( v n -- ) >R <# #S #> R> OVER - SPACES TYPE ;
 : Q $22 EMIT ;
 : .STR ( a -- a' )
@@ -482,13 +483,13 @@ HEX
      'BOOT @ CONTEXT @ NAME>   >  
      IF 'BOOT @ [ ' hi ] LITERAL = 
         IF DROP 
-        ELSE CR ." 提醒! 已自動為您取消 TURNKEY " [ ' hi ] LITERAL 'BOOT !
+        ELSE CR ." 提醒! 已自動取消 TURNKEY " [ ' hi ] LITERAL 'BOOT !
         THEN 
      THEN REMEMBER
    ELSE DROP CR \ MAO  TO BE CHANGE
- THEN ;
-: SEALED CR ." ERROR#04 : 禁止移除系統字!" STOP  ; \ MAO
+ THEN ; REMEMBER
+: SEALED CR ." ERROR#04 : 禁止移除系統字!" STOP  ; REMEMBER \ MAO
 ' SEALED 1+ ' FORGET $0C + i! \ MAO CHANGE $FFFF TO  SEALED ADDRESS
-' SEALED 2/ ' FORGET $D4 + i! \ MAO SHOW SEALED MESSAGE CHANGE CR
+' SEALED 2/ ' FORGET $CE + i! \ MAO SHOW SEALED MESSAGE CHANGE CR
   DECIMAL REMEMBER
 \  === END === 
