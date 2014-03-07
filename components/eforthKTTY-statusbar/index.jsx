@@ -3,18 +3,12 @@
 //var othercomponent=Require("other"); 
 var statusbar = React.createClass({
   getInitialState: function() {
-    return {bytes: 5, cid:-1};
   },
   render: function() {
+    var s=this.props.hideText
+    s=s?s.replace(/</g,'&lt;'):'';
     return (
-      <div className="statusbar">
-        <label className="labBytes">
-          {this.state.bytes}-byte Cmd
-        </label>
-        <label className="labConne">
-          Connection Id {this.state.cid}
-        </label>
-      </div>
+      <pre dangerouslySetInnerHTML={{__html:s}}/>
     );
   }
 });

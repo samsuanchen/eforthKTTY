@@ -7119,6 +7119,7 @@ td.visible-print {
 
 .ready {color:green;}
 .notReady {color:red;}
+error {color:red;}
 .inputarea {}
 #inputcmd{size:80;}
 .outputarea {border: 1px solid fuchsia;
@@ -7132,7 +7133,8 @@ td.visible-print {
 }
 ok {color: green;}
 inp {color: blue;}
-
+ok {color: green;}
+inp {color: blue;}
 .titlebar {text-align:center;font-size:150%;color:green;}
 .controlpanel {border: 1px solid fuchsia;}
 .warning {color:red;}

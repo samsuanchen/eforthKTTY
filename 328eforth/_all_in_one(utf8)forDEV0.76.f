@@ -157,7 +157,7 @@ $9508 CONSTANT INS_RET
 ' ."|     CONSTANT (.") 
 ' doVAR   CONSTANT (CON)
 : H. ( v -- ) <# #S #> TYPE ; 
-: A. ( a -- ) DUP <# # # # # # # #> SPACE 2/ <# # # # # # # #> TYPE ;
+: A. ( a -- ) DUP <# # # # # # # #> TYPE SPACE 2/ <# # # # # # # #> TYPE ;
 : H.R ( v n -- ) >R <# #S #> R> OVER - SPACES TYPE ;
 : Q $22 EMIT ;
 : .STR ( a -- a' )
@@ -489,7 +489,7 @@ HEX
    ELSE DROP CR \ MAO  TO BE CHANGE
  THEN ; REMEMBER
 : SEALED CR ." ERROR#04 : 禁止移除系統字!" STOP  ; REMEMBER \ MAO
-' SEALED 1+ ' FORGET $0C + i! \ MAO CHANGE $FFFF TO  SEALED ADDRESS
-' SEALED 2/ ' FORGET $CE + i! \ MAO SHOW SEALED MESSAGE CHANGE CR
-  DECIMAL REMEMBER
+\ ' SEALED 1+ ' FORGET $0C + i! \ MAO CHANGE $FFFF TO  SEALED ADDRESS
+\ ' SEALED 2/ ' FORGET $CE + i! \ MAO SHOW SEALED MESSAGE CHANGE CR
+\  DECIMAL REMEMBER
 \  === END === 

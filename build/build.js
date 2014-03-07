@@ -11841,13 +11841,15 @@ require.register("eforthktty-main/index.js", function(exports, require, module){
 /** @jsx React.DOM */
 // Component Specs and Lifecycle 須參考下列網址:
 // http://facebook.github.io/react/docs/component-specs.html
+var  hiddenCommand=  '1 EMIT CR .S CR WORDS'  ;
+var bHiddenCommand='[ 1 EMIT CR .S CR WORDS ]';
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
-var recieved, text, log, ok, command, fileName, lines, lineIndex;
-var lastByte;
+var recieved, text, log, ok, cmd, command, fileName, lines, lineIndex;
+var lastByte, hide, hideText;
 var ACK_KEY=6;
 var markInp=function(text,inp){
   var p=RegExp('^'+inp
@@ -11868,9 +11870,10 @@ var markOk=function(text,ok){
 };
 var connectingState = React.createClass({displayName: 'connectingState',
   render: function() {
+    var msg=this.props.connecting?'true':'False (please click "connect")';
     return (
       React.DOM.span( {className:this.props.className}, 
-        this.props.connecting.toString()
+        msg
       )
     );
   }
@@ -11916,7 +11919,8 @@ var main = React.createClass({displayName: 'main',
           onExecute:this.sendCommand,
           onPasted: this.sendPasted,
           onXfer:   this.sendFile}),
-        statusbar(null)
+        statusbar( 
+          {hideText: hideText})
       )
     );
   },
@@ -11930,7 +11934,7 @@ var main = React.createClass({displayName: 'main',
   onPortOpened:function() {
     console.log(Date(),this.state.port,"opened");
     this.setState({'connecting':true});
-    this.state.log='';
+    this.state.log=log=ok='';
     this.state.recieved=null;
     window.onclose=this.closePort;
   },
@@ -11941,10 +11945,18 @@ var main = React.createClass({displayName: 'main',
     log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
     text=recieved.toString();
-    if(command)text=markInp(text,command);
+    if(command) {
+      text=markInp(text,command);
+      var M=text.match(/<\/.+?>(.+)/m)
+      if (M) {
+        if (M[1].charCodeAt(0)===1) {
+          hide=true;
+        }
+      }
+    }
     if (lastByte===ACK_KEY) {
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port,"text recieved:",text);
+      console.log(Date(),this.state.port,"text recieved:",text,'hide',hide);
       if (!this.state.log) {
         var that=this;
         setTimeout( function() {
@@ -11959,21 +11971,33 @@ var main = React.createClass({displayName: 'main',
       text=text.replace(/^(\r\n)+/,'')
                .replace(/(\r\n)+\r\x06$/,'\r\n')
                .replace(/(\r\n)+/g,'\r\n');
-      log+=text;
+      if (!hide) {
+        log+=text;
+        hideText='';
+      } 
+      else {
+        hideText=text;
+        hide=false;
+      }
       text='';
-      if (lines&&lineIndex<lines.length) {
-        console.log("line",lineIndex,lines[lineIndex]);
-        var that=this;
-        setTimeout( function() {
-          that.sendCommand(lines[lineIndex++]);
-        },50);
+      if (lines&&lines!=[hiddenCommand]&&lines!=[bHiddenCommand]&&lineIndex<lines.length) {
+        cmd=lines[lineIndex++];
+        if (cmd!==command) {
+          console.log("line",lineIndex,cmd);
+          this.sendCommand(cmd);
+        }
+      //  var that=this;
+      //  setTimeout( function() {
+      //    that.sendCommand(lines[lineIndex++]);
+      //  },50);
       } else if (lineIndex) {
         var file=fileName?fileName:'pasted lines';
         console.log(Date(),this.state.port,"end of",file);
         fileName='';
       }
     }
-    this.setState({'lastText':text,'log':log, 'recieved':recieved});
+    this.state.recieved=recieved;
+    if (!hide) this.setState({'lastText':text,'log':log});
   },
   onPortError:function(e) {
     console.log(Date(),this.state.port,"error",e);
@@ -11996,11 +12020,39 @@ var main = React.createClass({displayName: 'main',
     lines=[];
     lineIndex=0;
   },
+  onHide:function(text) {
+    this.setState({hideText:text});
+  },
 // 寫到 com port
   sendCommand:function(cmd) {
+    if (cmd===command&&(cmd===hiddenCommand||cmd===bHiddenCommand)) return
     console.log(Date(),this.state.port,"sendCommand:",cmd);
+    var n=0, i, j=0;
+    cmd=cmd.replace(/^(\r?\n)+/,'');
+    for (i=0;i<cmd.length;i++) {
+      n+=cmd.charCodeAt(i)>0x80?3:1;
+      if (!j && n>80) j=i;
+    }
+    if (j) {
+      text+='<error>ERROR!</error> 328eforth commad too long of ';
+      text+=n+' bytes > 80, NOTE! each Chinese (UTF8) 3 bytes\r\n';
+      text+=cmd.substr(0,j-1)+'<error>'+cmd.substr(j-1)+'</error>';
+      if (fileName) {
+        text+='\r\nAt line-'+(lineIndex+1)+' of '+fileName;
+      }
+      lines=[];
+      this.setState({'lastText':text});
+      return;
+    }
+    this.setState({'cmd':cmd});
+    if (cmd=== hiddenCommand&&ok&&!log.match(/ok>\r\n$/)) cmd=bHiddenCommand; 
     command=cmd;
     conn.doWritePort(cmd);
+    if (!lines||lineIndex>=lines.length) { // undertable executing
+      if (cmd=== hiddenCommand||cmd===bHiddenCommand) return;
+      lines=[hiddenCommand];
+      lineIndex=0;
+    }
   },
   sendPasted: function (event) {
     var that=this, target=event.target;
@@ -12163,18 +12215,12 @@ require.register("eforthktty-statusbar/index.js", function(exports, require, mod
 //var othercomponent=Require("other"); 
 var statusbar = React.createClass({displayName: 'statusbar',
   getInitialState: function() {
-    return {bytes: 5, cid:-1};
   },
   render: function() {
+    var s=this.props.hideText
+    s=s?s.replace(/</g,'&lt;'):'';
     return (
-      React.DOM.div( {className:"statusbar"}, 
-        React.DOM.label( {className:"labBytes"}, 
-          this.state.bytes,"-byte Cmd "
-        ),
-        React.DOM.label( {className:"labConne"}, 
-          " Connection Id ", this.state.cid
-        )
-      )
+      React.DOM.pre( {dangerouslySetInnerHTML:{__html:s}})
     );
   }
 });
