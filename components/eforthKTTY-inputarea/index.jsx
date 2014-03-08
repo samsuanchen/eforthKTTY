@@ -87,6 +87,7 @@ var inputarea = React.createClass({
     cmdLine.push(cmd);
     lineIndex=cmdLine.length;
     this.props.onExecute(cmd);
+    this.setState({cmd:''});
     $inputcmd.value='';
   },
   sendfile:function() {

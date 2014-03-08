@@ -1,40 +1,36 @@
 /** @jsx React.DOM */
-// Component Specs and Lifecycle 須參考下列網址:
-// http://facebook.github.io/react/docs/component-specs.html
-var  hiddenCommand=  '1 EMIT CR .S CR WORDS'  ;
-var bHiddenCommand='[ 1 EMIT CR .S CR WORDS ]';
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
-var recieved, text, log, ok, cmd, command, fileName, lines, lineIndex;
-var lastByte, hide, hideText;
+var lib=Require("eforthKTTY/lib");
+
+// 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
+// http://facebook.github.io/react/docs/component-specs.html
+var recieved, lastByte, lastText, log='', ok;
+var HIDE_KEY=1;
+var hiddenCmd='1 EMIT CR .S CR WORDS';
+var bHiddenCmd, hide, hideText;
 var ACK_KEY=6;
-var markInp=function(text,inp){
-  var p=RegExp('^'+inp
-    .replace(/\\/g,'\\\\').replace(/\t/g," ")
-    .replace(/\|/g,'\\|').replace(/\'/g,"\\'")
-    .replace(/\./g,'\\.').replace(/\?/g,'\\?')
-    .replace(/\+/g,'\\+').replace(/\*/g,'\\*')
-    .replace(/\^/g,'\\^').replace(/\$/g,'\\$')
-    .replace(/\[/g,'\\[').replace(/\]/g,'\\]')
-    .replace(/\(/g,'\\(').replace(/\)/g,'\\)')
-    .replace(/\{/g,'\\{').replace(/\}/g,'\\}')
-  );
-  return text.replace(p,'<inp>'+inp+'</inp>');
-};
-var markOk=function(text,ok){
-  var p=RegExp(ok+'$');
-  return text.replace(p,' <ok>'+ok.trim().substr(0,1)+'</ok>\r\n');
-};
+var cmd, lastCmd;
+var fileName, lines, lineIndex;
+var Error_00=function(j){
+  log+='<error>ERROR#00</error> 328eforth commad too long\r\n';
+  log+='(bytes > 80) NOTE! each Chinese (UTF8) 3 bytes\r\n';
+  log+=cmd.substr(0,j-1)+'<error>'+cmd.substr(j-1)+'</error>';
+  if (fileName) {
+    log+='\r\nAt line '+lineIndex+' of '+fileName;
+  }
+  lines=[];
+  this.setState({'lastText':''});
+}
 var connectingState = React.createClass({
   render: function() {
-    var msg=this.props.connecting?'true':'False (please click "connect")';
+    var connecting=this.props.connecting;
+    var s=connecting?'true':'False (please click "connect")';
     return (
-      <span className={this.props.className}>
-        {msg}
-      </span>
+      <span className={this.props.className}>{s}</span>
     );
   }
 });
@@ -46,12 +42,10 @@ var main = React.createClass({
       baud: 19200, 
       connecting: false,
       system: "328eforth",
-      command: '',
       getOk: false,
       ok: '',
       log: '',
-      lastText: '',
-      recieved: new Buffer(0)};
+      lastText: ''};
   },
   render: function() {
     var connecting=this.state.connecting;
@@ -66,9 +60,8 @@ var main = React.createClass({
                       connecting={connecting}/>
         <titlebar/>
         <outputarea
-          log      ={this.state.log}
-          lastText ={this.state.lastText}
-          recieved ={this.state.recieved}/>
+          log      ={log}
+          lastText ={this.state.lastText}/>
         <controlpanel
           connecting  ={connecting}
           onClose  ={this.closePort}
@@ -94,30 +87,29 @@ var main = React.createClass({
   onPortOpened:function() {
     console.log(Date(),this.state.port,"opened");
     this.setState({'connecting':true});
-    this.state.log=log=ok='';
-    this.state.recieved=null;
+    log=ok='';
+    bHiddenCmd='[ '+hiddenCmd+' ]';
+    recieved=new Buffer(0);
     window.onclose=this.closePort;
   },
   onPortRecievedData:function(bytes) {
     lastByte=bytes[bytes.length-1];
     console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
-    recieved=this.state.recieved || new Buffer(0);
-    log=this.state.log;
     recieved=Buffer.concat([recieved,bytes],[2]);
-    text=recieved.toString();
-    if(command) {
-      text=markInp(text,command);
-      var M=text.match(/<\/.+?>(.+)/m)
+    lastText=recieved.toString();
+    if(lastCmd) {
+      lastText=lib.markInp(lastText,lastCmd);
+      var M=lastText.match(/<\/.+?>(.+)/m)
       if (M) {
-        if (M[1].charCodeAt(0)===1) {
+        if (M[1].charCodeAt(0)===HIDE_KEY) {
           hide=true;
         }
       }
     }
     if (lastByte===ACK_KEY) {
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port,"text recieved:",text,'hide',hide);
-      if (!this.state.log) {
+      console.log(Date(),this.state.port,"lastText recieved:",lastText,'hide',hide);
+      if (!log) {
         var that=this;
         setTimeout( function() {
           that.sendCommand('');
@@ -125,39 +117,34 @@ var main = React.createClass({
         },10);
       }
       if (!this.state.ok && this.state.getOk) {
-        this.state.ok=ok=text;
+        this.state.ok=ok=lastText;
       }
-      if(ok)text=markOk(text,ok);
-      text=text.replace(/^(\r\n)+/,'')
+      if(ok)lastText=lib.markOk(lastText,ok);
+      lastText=lastText.replace(/^(\r\n)+/,'')
                .replace(/(\r\n)+\r\x06$/,'\r\n')
                .replace(/(\r\n)+/g,'\r\n');
       if (!hide) {
-        log+=text;
+        log+=lastText;
         hideText='';
       } 
       else {
-        hideText=text;
+        hideText=lastText;
         hide=false;
       }
-      text='';
-      if (lines&&lines!=[hiddenCommand]&&lines!=[bHiddenCommand]&&lineIndex<lines.length) {
+      lastText='';
+      if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
         cmd=lines[lineIndex++];
-        if (cmd!==command) {
+        if (cmd!==lastCmd) {
           console.log("line",lineIndex,cmd);
           this.sendCommand(cmd);
         }
-      //  var that=this;
-      //  setTimeout( function() {
-      //    that.sendCommand(lines[lineIndex++]);
-      //  },50);
       } else if (lineIndex) {
         var file=fileName?fileName:'pasted lines';
         console.log(Date(),this.state.port,"end of",file);
         fileName='';
       }
     }
-    this.state.recieved=recieved;
-    if (!hide) this.setState({'lastText':text,'log':log});
+    if (!hide) this.setState({'lastText':lastText,'log':log});
   },
   onPortError:function(e) {
     console.log(Date(),this.state.port,"error",e);
@@ -168,10 +155,7 @@ var main = React.createClass({
   },
 // 開關 com port
   connectPort:function() {
-    if (this.state.connecting)
-      conn.doClosePort(this);
-    else
-      conn.doConnect(this.onPortOpen,this.state.port,this.state.baud,this);
+    conn.doConnect(this.onPortOpen,this.state.port,this.state.baud,this);
   },
 // 關閉 com port 
   closePort:function() {
@@ -180,37 +164,23 @@ var main = React.createClass({
     lines=[];
     lineIndex=0;
   },
-  onHide:function(text) {
-    this.setState({hideText:text});
-  },
 // 寫到 com port
   sendCommand:function(cmd) {
-    if (cmd===command&&(cmd===hiddenCommand||cmd===bHiddenCommand)) return
+    if ((cmd===hiddenCmd||cmd===bHiddenCmd)&&cmd===lastCmd) return
     console.log(Date(),this.state.port,"sendCommand:",cmd);
-    var n=0, i, j=0;
     cmd=cmd.replace(/^(\r?\n)+/,'');
-    for (i=0;i<cmd.length;i++) {
-      n+=cmd.charCodeAt(i)>0x80?3:1;
-      if (!j && n>80) j=i;
-    }
+    var j=lib.utf8StrTooLong(cmd);
     if (j) {
-      text+='<error>ERROR!</error> 328eforth commad too long of ';
-      text+=n+' bytes > 80, NOTE! each Chinese (UTF8) 3 bytes\r\n';
-      text+=cmd.substr(0,j-1)+'<error>'+cmd.substr(j-1)+'</error>';
-      if (fileName) {
-        text+='\r\nAt line-'+(lineIndex+1)+' of '+fileName;
-      }
-      lines=[];
-      this.setState({'lastText':text});
+      this.Error_00(j);
       return;
     }
     this.setState({'cmd':cmd});
-    if (cmd=== hiddenCommand&&ok&&!log.match(/ok>\r\n$/)) cmd=bHiddenCommand; 
-    command=cmd;
+    if (cmd=== hiddenCmd&&ok&&!log.match(/ok>\r\n$/)) cmd=bHiddenCmd; 
+    lastCmd=cmd;
     conn.doWritePort(cmd);
     if (!lines||lineIndex>=lines.length) { // undertable executing
-      if (cmd=== hiddenCommand||cmd===bHiddenCommand) return;
-      lines=[hiddenCommand];
+      if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
+      lines=[hiddenCmd];
       lineIndex=0;
     }
   },
@@ -236,6 +206,18 @@ var main = React.createClass({
     } else {
       console.log(Date(),this.state.port,"empty",fileName);
     }
+  },
+  Error_00:function(j){
+    log+='<error>ERROR#00</error> 328eforth commad too long\r\n';
+    log+='(bytes > 80) NOTE! each Chinese (UTF8) 3 bytes\r\n';
+    log+=cmd.substr(0,j-1)+'<error>'+cmd.substr(j-1)+'</error>\r\n';
+    if (fileName) {
+      log+='At line '+lineIndex+' of '+fileName;
+    }
+    log+=lib.markOk(ok,ok);
+    this.setState({'lastText':''});
+    lines=[];
+    this.sendCommand(hiddenCmd);
   }
 });
 module.exports=main;
