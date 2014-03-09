@@ -1,3 +1,10 @@
+var firstOutputByte=function(x,inp) {
+  var i=inp.length;
+  var r=x.substr(0,i)===inp;
+  if (r)
+    r=x.charCodeAt(i);
+  return r;
+}
 var utf8StrTooLong=function(str){
   var n=0, i, j=0;
   for (i=0;i<str.length;i++) {
@@ -27,6 +34,7 @@ var markOk=function(text,ok){
   return text.replace(p,' <ok>'+ok.trim().substr(0,1)+'</ok>\r\n');
 };
 module.exports={
+  firstOutputByte:firstOutputByte,
 	utf8StrTooLong:utf8StrTooLong,
 	markInp:markInp,
 	markOk:markOk}

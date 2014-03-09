@@ -8,7 +8,7 @@ var lib=Require("eforthKTTY/lib");
 
 // 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
 // http://facebook.github.io/react/docs/component-specs.html
-var recieved, lastByte, lastText, log='', ok;
+var recieved, lastByte, lastText, log='', ok, getOk;
 var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
@@ -42,8 +42,6 @@ var main = React.createClass({
       baud: 19200, 
       connecting: false,
       system: "328eforth",
-      getOk: false,
-      ok: '',
       log: '',
       lastText: ''};
   },
@@ -94,30 +92,28 @@ var main = React.createClass({
   },
   onPortRecievedData:function(bytes) {
     lastByte=bytes[bytes.length-1];
-    console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
+  //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
     lastText=recieved.toString();
     if(lastCmd) {
+      // check if last command needs to be hidden
+      if (lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY)
+        hide=true;
+      // use blue to color the last command
       lastText=lib.markInp(lastText,lastCmd);
-      var M=lastText.match(/<\/.+?>(.+)/m)
-      if (M) {
-        if (M[1].charCodeAt(0)===HIDE_KEY) {
-          hide=true;
-        }
-      }
     }
-    if (lastByte===ACK_KEY) {
+    if (lastByte===ACK_KEY) { // ready to send next command
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port,"lastText recieved:",lastText,'hide',hide);
+      console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
       if (!log) {
         var that=this;
         setTimeout( function() {
           that.sendCommand('');
-          that.state.getOk=true;
+          getOk=true;
         },10);
       }
-      if (!this.state.ok && this.state.getOk) {
-        this.state.ok=ok=lastText;
+      if (!ok && getOk) {
+        ok=lastText;
       }
       if(ok)lastText=lib.markOk(lastText,ok);
       lastText=lastText.replace(/^(\r\n)+/,'')
@@ -165,50 +161,53 @@ var main = React.createClass({
     lineIndex=0;
   },
 // 寫到 com port
-  sendCommand:function(cmd) {
-    if ((cmd===hiddenCmd||cmd===bHiddenCmd)&&cmd===lastCmd) return
-    console.log(Date(),this.state.port,"sendCommand:",cmd);
+  sendCommand:function(cmd) { var j;
+    console.log(Date(),this.state.port,"sendCommand:\r\n",cmd);
+    // A. ignore leading \r\n
     cmd=cmd.replace(/^(\r?\n)+/,'');
-    var j=lib.utf8StrTooLong(cmd);
-    if (j) {
-      this.Error_00(j);
+    // B. check if cmd too long
+    if (j=lib.utf8StrTooLong(cmd)) {
+      this.Error_00(j,cmd);
       return;
     }
     this.setState({'cmd':cmd});
-    if (cmd=== hiddenCmd&&ok&&!log.match(/ok>\r\n$/)) cmd=bHiddenCmd; 
-    lastCmd=cmd;
+    // C. if hidden cmd then adjust for compiling mode
+    if (cmd=== hiddenCmd&&ok&&!log.match(/ok>\r\n$/))
+      cmd=bHiddenCmd;
+    // D. current cmd processing
     conn.doWritePort(cmd);
-    if (!lines||lineIndex>=lines.length) { // undertable executing
-      if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
+    // E. remember current cmd
+    lastCmd=cmd;
+    // F. hidden cmd processing
+    if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
+    if (!lines||lineIndex>=lines.length) {
       lines=[hiddenCmd];
       lineIndex=0;
     }
   },
   sendPasted: function (event) {
-    var that=this, target=event.target;
-    setTimeout(function(){
+    var target=event.target;
+    if (target.value) return; // do nothing if command box not empty
+    var that=this;
+    setTimeout(function(){ // defer to next event to get pasted lines
       lines=target.value.split(/\r?\n/);
       console.log(Date(),that.state.port,"sendPasted",lines.length,"line(s)");
       lineIndex=0;
-      that.sendCommand(lines[lineIndex++]);
+      that.sendCommand(lines[lineIndex++]); // send the first line
       target.value='';
-    },0); // defer the handler to the next event
+    },0);
   },
 // 寫到 com port
   sendFile:function(file) {
     console.log(Date(),this.state.port,"sendFile:",file);
     fileName=file;
     lines=conn.readFile(fileName);
-    if (lines.length) {
-      console.log(Date(),this.state.port,"start of",fileName);
-      lineIndex=0;
-      this.sendCommand(lines[lineIndex++]);
-    } else {
-      console.log(Date(),this.state.port,"empty",fileName);
-    }
+    console.log(Date(),this.state.port,"start of",fileName);
+    lineIndex=0;
+    this.sendCommand(lines[lineIndex++]);
   },
-  Error_00:function(j){
-    log+='<error>ERROR#00</error> 328eforth commad too long\r\n';
+  Error_00:function(j,cmd){
+    log+='ERROR#00 : command too long\r\n';
     log+='(bytes > 80) NOTE! each Chinese (UTF8) 3 bytes\r\n';
     log+=cmd.substr(0,j-1)+'<error>'+cmd.substr(j-1)+'</error>\r\n';
     if (fileName) {
@@ -216,8 +215,8 @@ var main = React.createClass({
     }
     log+=lib.markOk(ok,ok);
     this.setState({'lastText':''});
-    lines=[];
+    lines = [];
     this.sendCommand(hiddenCmd);
   }
 });
-module.exports=main;
+module.exports = main;

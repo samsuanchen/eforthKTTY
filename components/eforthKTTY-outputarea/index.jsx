@@ -2,26 +2,24 @@
 
 //var othercomponent=Require("other"); 
 var $=Require("jquery");
+var $outputarea;
 var outputarea = React.createClass({
   getInitialState: function() {
     return {};
   },
   render: function() {
-	var s=this.props.log+this.props.lastText;
+	  var s=this.props.log+this.props.lastText;
+    s=s.replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
+      return '<error>'+M+'<\/error>';
+    });
     return (
-    <pre ref="outputarea" className="outputarea"
-		dangerouslySetInnerHTML={{__html:s}}/>
-    //</div>
-    /*
-      <div ref="outputarea" className="outputarea">
-		{this.props.log+(this.props.recieved?this.props.recieved.toString():'')}
-      </div>
-      */
+      <pre ref="outputarea" className="outputarea"
+  		dangerouslySetInnerHTML={{__html:s}}/>
     );
   },
   componentDidUpdate:function() {
-	var $outputarea=$(this.refs.outputarea.getDOMNode());
-	$outputarea.scrollTop($outputarea[0].scrollHeight);
+  	$outputarea=$outputarea||$(this.refs.outputarea.getDOMNode());
+  	$outputarea.scrollTop($outputarea[0].scrollHeight);
   }
 });
 module.exports=outputarea;
