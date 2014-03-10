@@ -6,7 +6,7 @@ var statusbar = React.createClass({
   },
   render: function() {
     var s=this.props.hideText
-    s=s?s.replace(/</g,'&lt;'):'';
+//  s=s?s.replace(/</g,'&lt;'):'';
     return (
       <pre dangerouslySetInnerHTML={{__html:s}}/>
     );
