@@ -25,15 +25,6 @@ var Error_00=function(j){
   lines=[];
   this.setState({'lastText':''});
 }
-var connectingState = React.createClass({
-  render: function() {
-    var connecting=this.props.connecting;
-    var s=connecting?'true':'False (please click "connect")';
-    return (
-      <span className={this.props.className}>{s}</span>
-    );
-  }
-});
 var main = React.createClass({
   getInitialState: function() {
     return {
@@ -53,9 +44,6 @@ var main = React.createClass({
         port: {this.state.port}
         baud: {this.state.baud}
         system: {this.state.system}
-        connecting: <connectingState
-                      className={className}
-                      connecting={connecting}/>
         <titlebar/>
         <outputarea
           log      ={log}

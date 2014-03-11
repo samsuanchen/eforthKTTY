@@ -11865,15 +11865,6 @@ var Error_00=function(j){
   lines=[];
   this.setState({'lastText':''});
 }
-var connectingState = React.createClass({displayName: 'connectingState',
-  render: function() {
-    var connecting=this.props.connecting;
-    var s=connecting?'true':'False (please click "connect")';
-    return (
-      React.DOM.span( {className:this.props.className}, s)
-    );
-  }
-});
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
     return {
@@ -11893,9 +11884,6 @@ var main = React.createClass({displayName: 'main',
         " port: ", this.state.port,
         " baud: ", this.state.baud,
         " system: ", this.state.system,
-        " connecting: ", connectingState(
-                      {className:className,
-                      connecting:connecting}),
         titlebar(null),
         outputarea(
           {log:      log,
@@ -12250,14 +12238,17 @@ require.register("eforthktty-connection/index.js", function(exports, require, mo
 /** @jsx React.DOM */
 //var othercomponent=Require("other"); 
 var connection = React.createClass({displayName: 'connection',
-  render: function() { var connecting, txt, flg, act;
+  render: function() { var connecting, className, flg, txt, act, sta;
     connecting=this.props.connecting;
+    className=connecting?'ready':'notReady';
     flg=connecting?'warning':'normal';
     txt=connecting?'close':'connect';
     act=connecting?this.doclose:this.doconnect;
+    sta=connecting?'true':'False (please click "connect")';
     return (
       React.DOM.div(null, 
-        React.DOM.button( {className:flg, onClick:act}, txt)
+        React.DOM.button( {className:flg, onClick:act}, txt),
+        " connecting: ", React.DOM.span( {className:className}, sta)
       )
     );
   },
