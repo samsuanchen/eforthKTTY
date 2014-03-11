@@ -1,4 +1,4 @@
 eforthKTTY
 ==========
 
-ksana node webkit serialport tty
+node webkit serialport eforth ksana tty

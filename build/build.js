@@ -12198,7 +12198,7 @@ var statusbar = React.createClass({displayName: 'statusbar',
   },
   render: function() {
     var s=this.props.hideText
-//  s=s?s.replace(/</g,'&lt;'):'';
+	s=s?s.replace(/<sp/,'&lt;sp'):'';
     return (
       React.DOM.pre( {dangerouslySetInnerHTML:{__html:s}})
     );

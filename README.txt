@@ -24,6 +24,15 @@ C02. Hidden processing.
    After a command line input sent to 328eforth, eforthKTTY will send '1 EMIT CR .S CR WORDS'
    or '[ 1 EMIT CR .S CR WORDS ]' extra command to get the working status of 328eforth.
 
+C03. Retrieve previous command line input.
+   Previous command line input can be retrieve bye using UP and DOWN keys.
+
+C04. Sending 328eforth command file.
+   Click 'sendFile' can send command lines of a specified file in '328eforth' directory.
+
+C05. Sending clipboard text as command lines.
+   Pasteing into empty command line input box, can send clipboard text as command lines.
+
 >>> D. to do:
 
 D01. Make input boxes for port, baud, system.
