@@ -7120,8 +7120,19 @@ td.visible-print {
 .ready {color:green;}
 .notReady {color:red;}
 error {color:red;}
-.inputarea {}
-#inputcmd{size:80;}
+.sendCmdBtn{
+	margin-left: 1px;
+	width: 80px;}
+.inputCmdBox{
+	margin-left: 2px;
+	margin-top: 5px}
+.sendFileBtn{
+	margin-left: 1px;
+	width: 80px;}
+.inputFileBox{
+	margin-left: 2px;
+	margin-top: 2px;}
+.systemBox{width: 82px;}
 .outputarea {border: 1px solid fuchsia;
 	margin-top:0px;
     height: 392px;
@@ -7139,6 +7150,8 @@ inp {color: blue;}
 .controlpanel {border: 1px solid fuchsia;}
 .warning {color:red;}
 .normal{color:green;}
+.portBox{width:56;}
+.baudBox{width:50;}
 
 
 #main {}

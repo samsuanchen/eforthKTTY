@@ -12062,7 +12062,8 @@ var inputarea = React.createClass({displayName: 'inputarea',
   render: function() {
     return (
       React.DOM.div(null, 
-        React.DOM.button( {onClick:this.sendcmd}, "sendCmd"),
+        React.DOM.button( {className:"sendCmdBtn",
+          onClick:this.sendcmd}, "sendCmd"),
         React.DOM.textarea(
           {onKeyDown:this.cmdKeyDown,
           onPaste:this.props.onPasted,
@@ -12070,14 +12071,17 @@ var inputarea = React.createClass({displayName: 'inputarea',
           rows:"1",
           ref:"inputcmd",
           defaultValue:this.state.cmd}),React.DOM.br(null),
-        React.DOM.button( {onClick:this.sendfile}, "sendFile"),
+        React.DOM.button( {className:"sendFileBtn",
+          onClick:this.sendfile}, "send File"),
         React.DOM.input(
           {onKeyDown:this.fileKeyDown,
           size:"60",
           ref:"inputfile",
           defaultValue:this.state.file}
         ),
-        " dir: ", this.props.system
+        " dir ", React.DOM.input( {className:"systemBox",
+          defaultValue:this.props.system}
+        )
       )
     );
   },
@@ -12246,8 +12250,12 @@ var connection = React.createClass({displayName: 'connection',
     sta=connecting?'true':'False (please click "connect")';
     return (
       React.DOM.div(null, 
-        " port: ", this.props.port,
-        " baud: ", this.props.baud,
+        " port ", React.DOM.input( {className:"portBox",
+          defaultValue:this.props.port}
+        ),
+        " baud ", React.DOM.input( {className:"baudBox",
+          defaultValue:this.props.baud}
+        ),
         React.DOM.button( {className:flg, onClick:act}, txt),
         " connecting: ", React.DOM.span( {className:className}, sta)
       )
