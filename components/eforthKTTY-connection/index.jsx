@@ -10,6 +10,8 @@ var connection = React.createClass({
     sta=connecting?'true':'False (please click "connect")';
     return (
       <div>
+        port: {this.props.port}
+        baud: {this.props.baud}
         <button className={flg} onClick={act}>{txt}</button>
         connecting: <span className={className}>{sta}</span>
       </div>

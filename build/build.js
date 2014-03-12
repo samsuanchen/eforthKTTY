@@ -11868,7 +11868,7 @@ var Error_00=function(j){
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
     return {
-      cmd: "WORDS",
+      cmd: "SEE WORDS",
       port: "COM32",
       baud: 19200, 
       connecting: false,
@@ -11881,9 +11881,6 @@ var main = React.createClass({displayName: 'main',
     var className=connecting?'ready':'notReady';
     return (
       React.DOM.div(null, 
-        " port: ", this.state.port,
-        " baud: ", this.state.baud,
-        " system: ", this.state.system,
         titlebar(null),
         outputarea(
           {log:      log,
@@ -11894,10 +11891,10 @@ var main = React.createClass({displayName: 'main',
           onConnect:this.connectPort,
           port:     this.state.port,
           baud:     this.state.baud,
-          system:   this.state.system,
           onExecute:this.sendCommand,
           onPasted: this.sendPasted,
-          onXfer:   this.sendFile}),
+          onXfer:   this.sendFile,
+          system:   this.state.system}),
         statusbar( 
           {hideText: hideText})
       )
@@ -11915,6 +11912,7 @@ var main = React.createClass({displayName: 'main',
     this.setState({'connecting':true});
     log=ok='';
     bHiddenCmd='[ '+hiddenCmd+' ]';
+    hide=getOk=false;
     recieved=new Buffer(0);
     window.onclose=this.closePort;
   },
@@ -12059,7 +12057,7 @@ var UP_KEY=38, DOWN_KEY=40
 var $inputcmd, $inputfile, cmd, cmdLine=[], lineIndex=0;
 var inputarea = React.createClass({displayName: 'inputarea',
   getInitialState: function() {
-    return {cmd: "WORDS", file: "test.f"};
+    return {cmd: "SEE WORDS", file: "test.f"};
   },
   render: function() {
     return (
@@ -12071,14 +12069,15 @@ var inputarea = React.createClass({displayName: 'inputarea',
           cols:"80",
           rows:"1",
           ref:"inputcmd",
-          defaultValue:this.state.cmd}),
+          defaultValue:this.state.cmd}),React.DOM.br(null),
         React.DOM.button( {onClick:this.sendfile}, "sendFile"),
         React.DOM.input(
           {onKeyDown:this.fileKeyDown,
           size:"60",
           ref:"inputfile",
           defaultValue:this.state.file}
-        )
+        ),
+        " dir: ", this.props.system
       )
     );
   },
@@ -12247,6 +12246,8 @@ var connection = React.createClass({displayName: 'connection',
     sta=connecting?'true':'False (please click "connect")';
     return (
       React.DOM.div(null, 
+        " port: ", this.props.port,
+        " baud: ", this.props.baud,
         React.DOM.button( {className:flg, onClick:act}, txt),
         " connecting: ", React.DOM.span( {className:className}, sta)
       )

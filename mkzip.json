@@ -1,4 +1,7 @@
 {
 	"repos":["node_modules/serialport"],
-	"files":["eforthKTTY/conn.js"]
+	"files":[
+		"eforthKTTY/README.txt",
+		"eforthKTTY/conn.js",
+		"eforthKTTY/lib.js"]
 }

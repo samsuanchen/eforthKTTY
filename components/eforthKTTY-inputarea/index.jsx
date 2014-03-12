@@ -7,7 +7,7 @@ var UP_KEY=38, DOWN_KEY=40
 var $inputcmd, $inputfile, cmd, cmdLine=[], lineIndex=0;
 var inputarea = React.createClass({
   getInitialState: function() {
-    return {cmd: "WORDS", file: "test.f"};
+    return {cmd: "SEE WORDS", file: "test.f"};
   },
   render: function() {
     return (
@@ -19,7 +19,7 @@ var inputarea = React.createClass({
           cols='80'
           rows='1'
           ref="inputcmd"
-          defaultValue={this.state.cmd}/>
+          defaultValue={this.state.cmd}/><br/>
         <button onClick={this.sendfile}>sendFile</button>
         <input
           onKeyDown={this.fileKeyDown}
@@ -27,6 +27,7 @@ var inputarea = React.createClass({
           ref="inputfile"
           defaultValue={this.state.file}>
         </input>
+        dir: {this.props.system}
       </div>
     );
   },

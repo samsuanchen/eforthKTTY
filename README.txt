@@ -1,3 +1,4 @@
+eforthKTTY -- node webkit serialport 328eforth ksana tty
 
 >>> A. starting eforthKTTY
 
@@ -6,7 +7,7 @@ A01. Before starting eforthKTTY,
    is replaced as 'port:"COM32"', if we communicate with 328eforth
    on chip atmega328p via COM32. (figure out the port used first)
    
-A02. Click run.bat (or nw.exe) to start eforthKTTY.
+A02. DblClick run.bat (or nw.exe) to start eforthKTTY.
 
 A03. Click 'connect' to connect serial port.
 
@@ -30,15 +31,28 @@ C03. Retrieve previous command line input.
 C04. Sending 328eforth command file.
    Click 'sendFile' can send command lines of a specified file in '328eforth' directory.
 
-C05. Sending clipboard text as command lines.
+C05. Pasteing text as command lines.
    Pasteing into empty command line input box, can send clipboard text as command lines.
 
 >>> D. to do:
 
-D01. Make input boxes for port, baud, system.
-
-D02. Prevent Hidden processing for KEY or ?KEY of 328eforth.
+D01. "7 EMIT" as error. (in output).
+D02. "6 EMIT" as ready for next command ï¿½]last output, Hidden command running 328eforth .S and WORDSï¿½^.
+D03. "5 EMIT" as ready for next inputï¿½]last output, no Hidden command for KEY or ?KEY of 328eforthï¿½^.
+D04. "1 EMIT" as hidden info. (first output, curren recieved data)
+D05. inputBox for port, baud, system.
+D06. show cmdLine UTF8 byte-length.
+D07. show previous-cmdLine record-length.
+D08. mark error and prevent pending lines when error during pasting or file xfering.
+D09. prevent 2 oks for ESC.
+D10. checkBox to show recieved bytes for debugging.
+D11. unit test.
+D12. listBox to select port.
+D13. listBox to select file.
+D14. lineDelay to wait for next command.
+D15. include README.txt into zip.
 
 >>> E. to report bigs:
 
-E01. Email to samsuanchem@gmail.com or call 0920-714-028 ³¯²n
+E01. email samsuanchem@gmail.com
+E02. call 0920-714-028 ï¿½ï¿½ï¿½n

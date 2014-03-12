@@ -28,7 +28,7 @@ var Error_00=function(j){
 var main = React.createClass({
   getInitialState: function() {
     return {
-      cmd: "WORDS",
+      cmd: "SEE WORDS",
       port: "COM32",
       baud: 19200, 
       connecting: false,
@@ -41,9 +41,6 @@ var main = React.createClass({
     var className=connecting?'ready':'notReady';
     return (
       <div>
-        port: {this.state.port}
-        baud: {this.state.baud}
-        system: {this.state.system}
         <titlebar/>
         <outputarea
           log      ={log}
@@ -54,10 +51,10 @@ var main = React.createClass({
           onConnect={this.connectPort}
           port     ={this.state.port}
           baud     ={this.state.baud}
-          system   ={this.state.system}
           onExecute={this.sendCommand}
           onPasted ={this.sendPasted}
-          onXfer   ={this.sendFile}/>
+          onXfer   ={this.sendFile}
+          system   ={this.state.system}/>
         <statusbar 
           hideText ={hideText}/>
       </div>
@@ -75,6 +72,7 @@ var main = React.createClass({
     this.setState({'connecting':true});
     log=ok='';
     bHiddenCmd='[ '+hiddenCmd+' ]';
+    hide=getOk=false;
     recieved=new Buffer(0);
     window.onclose=this.closePort;
   },
