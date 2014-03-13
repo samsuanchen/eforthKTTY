@@ -9,7 +9,7 @@ var connection = React.createClass({
     act=connecting?this.doclose:this.doconnect;
     sta=connecting?'true':'False (please click "connect")';
     return (
-      <div>
+      <div className="connection">
         port <input className="portBox"
           defaultValue={this.props.port}>
         </input>

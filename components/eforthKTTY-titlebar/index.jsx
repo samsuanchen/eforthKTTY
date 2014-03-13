@@ -2,7 +2,7 @@
 var titlebar = React.createClass({
   render: function() {
     return (
-      <div className="titlebar">eForth KTTY</div>
+      <div className="titlebar">eforthKTTY -- node webkit serialport 328eforth ksana tty</div>
     );
   }
 });

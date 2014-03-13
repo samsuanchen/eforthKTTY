@@ -14,7 +14,7 @@ var inputarea = React.createClass({
       <div>
         <button className="sendCmdBtn"
           onClick={this.sendcmd}>sendCmd</button>
-        <textarea
+        <textarea className="inputCmdBox"
           onKeyDown={this.cmdKeyDown}
           onPaste={this.props.onPasted}
           cols='80'
@@ -23,7 +23,7 @@ var inputarea = React.createClass({
           defaultValue={this.state.cmd}/><br/>
         <button className="sendFileBtn"
           onClick={this.sendfile}>send File</button>
-        <input
+        <input className="inputFileBox"
           onKeyDown={this.fileKeyDown}
           size='60'
           ref="inputfile"

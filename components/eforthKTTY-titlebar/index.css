@@ -1,1 +1,6 @@
-.titlebar {text-align:center;font-size:150%;color:green;}
+.titlebar {
+	height: 25px;
+	text-align:center;
+	font-size:120%;
+	color:green;
+	margin-bottom: 0;}

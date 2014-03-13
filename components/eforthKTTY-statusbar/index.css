@@ -1,2 +1,9 @@
-ok {color: green;}
-inp {color: blue;}
+ok {
+	color: green;}
+inp {
+	color: blue;}
+pre {
+	border: 1px solid fuchsia;
+	height: 260px; 
+	margin-top: 1; 
+	margin-bottom: 1}

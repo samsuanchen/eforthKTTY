@@ -1,4 +1,11 @@
-.warning {color:red;}
-.normal{color:green;}
-.portBox{width:56;}
-.baudBox{width:50;}
+.warning {
+	color:red;}
+.normal{
+	color:green;}
+.portBox{
+	width:56;}
+.baudBox{
+	width:50;}
+.connection{
+	margin-top: 1; 
+	margin-bottom: 1}
