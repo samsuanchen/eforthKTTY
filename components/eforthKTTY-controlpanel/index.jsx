@@ -13,6 +13,7 @@ var controlpanel = React.createClass({
           system    ={this.props.system}
           onPasted  ={this.props.onPasted}
           onXfer    ={this.props.onXfer}
+          lineDelay ={this.props.lineDelay}
           onExecute ={this.props.onExecute}/>
         <connection
           connecting={this.props.connecting}

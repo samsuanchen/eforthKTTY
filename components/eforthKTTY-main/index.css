@@ -1,3 +1,8 @@
-.ready {color:green;}
-.notReady {color:red;}
-error {color:red;}
+.ready {
+	color:green;}
+.notReady {
+	color:red;}
+.main{
+	overflow: none;}
+error {
+	color:red;}

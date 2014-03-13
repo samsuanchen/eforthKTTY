@@ -4,11 +4,26 @@
 var statusbar = React.createClass({
   getInitialState: function() {
   },
-  render: function() {
-    var s=this.props.hideText
-	s=s?s.replace(/<sp/,'&lt;sp'):'';
+  render: function() { var stack, words, hideText, match;
+  	stack='empty';
+  	words='';
+  	hideText=this.props.hideText;
+  	if (hideText) {
+	  	match=hideText.match(/inp>.\r\n (.*)&lt;sp\r\n(.*) <ok>/m);
+	  	if (match) {
+	  		stack=match[1];
+	  		stack=stack?stack:"empty";
+	  		words=match[2];
+	  	};
+	};
     return (
-      <pre dangerouslySetInnerHTML={{__html:s}}/>
+    <div className="statusbar">
+      <div className="stack">
+      	dataStack: <span ref="dataStack">{stack}</span>
+      </div>
+      <pre className="words"
+       dangerouslySetInnerHTML={{__html:words}}/>
+    </div>
     );
   }
 });

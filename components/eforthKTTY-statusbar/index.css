@@ -1,9 +1,18 @@
 ok {
-	color: green;}
+	color: green;
+}
 inp {
-	color: blue;}
+	color: blue;
+}
+.stack{
+	margin-left: 2;
+}
 pre {
 	border: 1px solid fuchsia;
-	height: 260px; 
+	height: 212px;
+	overflow: auto;
+	overflow-y: auto;
+	overflow-x: none;
 	margin-top: 1; 
-	margin-bottom: 1}
+	margin-bottom: 1;
+}

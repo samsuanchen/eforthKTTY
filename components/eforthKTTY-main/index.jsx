@@ -13,7 +13,7 @@ var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
 var ACK_KEY=6;
-var cmd, lastCmd;
+var time, cmd, lastCmd;
 var fileName, lines, lineIndex;
 var Error_00=function(j){
   log+='<error>ERROR#00</error> 328eforth commad too long\r\n';
@@ -33,6 +33,7 @@ var main = React.createClass({
       baud: 19200, 
       connecting: false,
       system: "328eforth",
+      lineDelay: 0,
       log: '',
       lastText: ''};
   },
@@ -40,7 +41,7 @@ var main = React.createClass({
     var connecting=this.state.connecting;
     var className=connecting?'ready':'notReady';
     return (
-      <div>
+      <div className="main">
         <titlebar/>
         <outputarea
           log      ={log}
@@ -54,7 +55,8 @@ var main = React.createClass({
           onExecute={this.sendCommand}
           onPasted ={this.sendPasted}
           onXfer   ={this.sendFile}
-          system   ={this.state.system}/>
+          system   ={this.state.system}
+          lineDelay={this.state.lineDelay}/>
         <statusbar 
           hideText ={hideText}/>
       </div>
@@ -80,7 +82,7 @@ var main = React.createClass({
     lastByte=bytes[bytes.length-1];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
-    lastText=recieved.toString();
+    lastText=recieved.toString().replace(/</g,'&lt;');
     if(lastCmd) {
       // check if last command needs to be hidden
       if (lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY)
