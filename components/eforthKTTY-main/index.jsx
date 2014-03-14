@@ -12,7 +12,7 @@ var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
 var ACK_KEY=6;
-var timer, cmd, lastCmd;
+var timer, cmd, lastCmd, error=0;
 var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({
   getInitialState: function() {
@@ -40,6 +40,9 @@ var main = React.createClass({
           connecting={connecting}
           onClose   ={this.closePort}
           onConnect ={this.connectPort}
+          onPortChange={this.onPortChange}
+          onBaudChange={this.onBaudChange}
+          onChangeLineDelay={this.onChangeLineDelay}
           port      ={this.state.port}
           baud      ={this.state.baud}
           onExecute ={this.sendCommand}
@@ -51,6 +54,19 @@ var main = React.createClass({
           hideText  ={hideText}/>
       </div>
     );
+  },
+  onPortChange:function(port) {
+    if (!this.state.connecting) return;
+    this.closePort();
+    this.state.port=port;
+  },
+  onBaudChange:function(baud) {
+    if (!this.state.connecting) return;
+    this.closePort();
+    this.state.baud=baud;
+  },
+  onChangeLineDelay:function(lineDelay) {
+    this.state.lineDelay=lineDelay;
   },
   onPortOpen:function(e) {
     if (e) {
@@ -73,7 +89,12 @@ var main = React.createClass({
     lastByte=bytes[bytes.length-1];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
-    lastText=recieved.toString().replace(/</g,'&lt;');
+    lastText=recieved.toString()
+        .replace(/</g,'&lt;')
+        .replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
+          error++;
+          return '<error>'+M+'<\/error>';
+        });;
     if(lastCmd) {
       // check if last command needs to be hidden
       if (lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY)
@@ -158,6 +179,10 @@ var main = React.createClass({
     }
   },
   sendNextCommand:function() {
+    if (error) {
+        lines = [];
+        return;
+    }
     if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
       cmd=lines[lineIndex++];
       if (cmd!==lastCmd) {

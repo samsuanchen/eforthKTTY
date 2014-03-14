@@ -11852,7 +11852,7 @@ var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
 var ACK_KEY=6;
-var timer, cmd, lastCmd;
+var timer, cmd, lastCmd, error=0;
 var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
@@ -11880,6 +11880,9 @@ var main = React.createClass({displayName: 'main',
           {connecting:connecting,
           onClose:   this.closePort,
           onConnect: this.connectPort,
+          onPortChange:this.onPortChange,
+          onBaudChange:this.onBaudChange,
+          onChangeLineDelay:this.onChangeLineDelay,
           port:      this.state.port,
           baud:      this.state.baud,
           onExecute: this.sendCommand,
@@ -11891,6 +11894,19 @@ var main = React.createClass({displayName: 'main',
           {hideText:  hideText})
       )
     );
+  },
+  onPortChange:function(port) {
+    if (!this.state.connecting) return;
+    this.closePort();
+    this.state.port=port;
+  },
+  onBaudChange:function(baud) {
+    if (!this.state.connecting) return;
+    this.closePort();
+    this.state.baud=baud;
+  },
+  onChangeLineDelay:function(lineDelay) {
+    this.state.lineDelay=lineDelay;
   },
   onPortOpen:function(e) {
     if (e) {
@@ -11913,7 +11929,12 @@ var main = React.createClass({displayName: 'main',
     lastByte=bytes[bytes.length-1];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
-    lastText=recieved.toString().replace(/</g,'&lt;');
+    lastText=recieved.toString()
+        .replace(/</g,'&lt;')
+        .replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
+          error++;
+          return '<error>'+M+'<\/error>';
+        });;
     if(lastCmd) {
       // check if last command needs to be hidden
       if (lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY)
@@ -11998,6 +12019,10 @@ var main = React.createClass({displayName: 'main',
     }
   },
   sendNextCommand:function() {
+    if (error) {
+        lines = [];
+        return;
+    }
     if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
       cmd=lines[lineIndex++];
       if (cmd!==lastCmd) {
@@ -12082,6 +12107,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
           defaultValue:this.props.system}
         ),
         " lineDelay ", React.DOM.input( {className:"lineDelayBox",
+          onChange:this.changelineDelay,
           defaultValue:this.props.lineDelay}
         )
       )
@@ -12090,6 +12116,9 @@ var inputarea = React.createClass({displayName: 'inputarea',
   componentDidUpdate:function() {
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
     $inputcmd.focus();
+  },
+  changeLineDelay: function (e) {
+    this.props.onChangeLineDelay(e.target.value.trim());
   },
   prevLine: function () {
     if (lineIndex) {
@@ -12167,9 +12196,6 @@ var outputarea = React.createClass({displayName: 'outputarea',
   },
   render: function() {
 	  var s=this.props.log+this.props.lastText;
-    s=s.replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
-      return '<error>'+M+'<\/error>';
-    });
     return (
       React.DOM.pre( {ref:"outputarea", className:"outputarea",
   		dangerouslySetInnerHTML:{__html:s}})
@@ -12242,11 +12268,14 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
           onPasted:  this.props.onPasted,
           onXfer:    this.props.onXfer,
           lineDelay: this.props.lineDelay,
+          onChangeLineDelay:this.props.onChangeLineDelay,
           onExecute: this.props.onExecute}),
         connection(
           {connecting:this.props.connecting,
           onClose:   this.props.onClose,
           onConnect: this.props.onConnect,
+          onPortChange:this.props.onPortChange,
+          onBaudChange:this.props.onBaudChange,
           port:      this.props.port,
           baud:      this.props.baud})
       )
@@ -12265,17 +12294,19 @@ var connection = React.createClass({displayName: 'connection',
     flg=connecting?'warning':'normal';
     txt=connecting?'close':'connect';
     act=connecting?this.doclose:this.doconnect;
-    sta=connecting?'true':'False (please click "connect")';
+    sta=connecting?this.props.port:'none (please click "connect")';
     return (
       React.DOM.div( {className:"connection"}, 
         " port ", React.DOM.input( {className:"portBox",
+          onChange:this.portChange,
           defaultValue:this.props.port}
         ),
         " baud ", React.DOM.input( {className:"baudBox",
+          onChange:this.baudChange,
           defaultValue:this.props.baud}
         ),
         React.DOM.button( {className:flg, onClick:act}, txt),
-        " connecting: ", React.DOM.span( {className:className}, sta)
+        React.DOM.span( {className:className}, sta)
       )
     );
   },
@@ -12284,6 +12315,12 @@ var connection = React.createClass({displayName: 'connection',
   },
   doclose:function() {
     this.props.onClose();
+  },
+  portChange:function(e) {
+    this.props.onPortChange(e.target.value.trim());
+  },
+  baudChange:function(e) {
+    this.props.onBaudChange(e.target.value.trim());
   }
 });
 module.exports=connection;
@@ -28216,7 +28253,9 @@ var doConnect_nodewebkit=function(onPortOpen,port,baud,that) {
 	})
 }
 var doWritePort_nodewebkit=function(command) {
-	serialport.write(command+'\r')
+	if (!command||command.charCodeAt(0)>=0x20)
+		command+='\r'
+	serialport.write(command)
 }
 var doClosePort_nodewebkit=function(that) {
 	serialport.close()

@@ -7,17 +7,19 @@ var connection = React.createClass({
     flg=connecting?'warning':'normal';
     txt=connecting?'close':'connect';
     act=connecting?this.doclose:this.doconnect;
-    sta=connecting?'true':'False (please click "connect")';
+    sta=connecting?this.props.port:'none (please click "connect")';
     return (
       <div className="connection">
         port <input className="portBox"
+          onChange={this.portChange}
           defaultValue={this.props.port}>
         </input>
         baud <input className="baudBox"
+          onChange={this.baudChange}
           defaultValue={this.props.baud}>
         </input>
         <button className={flg} onClick={act}>{txt}</button>
-        connecting: <span className={className}>{sta}</span>
+        <span className={className}>{sta}</span>
       </div>
     );
   },
@@ -26,6 +28,12 @@ var connection = React.createClass({
   },
   doclose:function() {
     this.props.onClose();
+  },
+  portChange:function(e) {
+    this.props.onPortChange(e.target.value.trim());
+  },
+  baudChange:function(e) {
+    this.props.onBaudChange(e.target.value.trim());
   }
 });
 module.exports=connection;

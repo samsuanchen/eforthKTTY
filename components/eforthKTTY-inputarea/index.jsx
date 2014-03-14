@@ -33,6 +33,7 @@ var inputarea = React.createClass({
           defaultValue={this.props.system}>
         </input>
         lineDelay <input className="lineDelayBox"
+          onChange={this.changelineDelay}
           defaultValue={this.props.lineDelay}>
         </input>
       </div>
@@ -41,6 +42,9 @@ var inputarea = React.createClass({
   componentDidUpdate:function() {
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
     $inputcmd.focus();
+  },
+  changeLineDelay: function (e) {
+    this.props.onChangeLineDelay(e.target.value.trim());
   },
   prevLine: function () {
     if (lineIndex) {

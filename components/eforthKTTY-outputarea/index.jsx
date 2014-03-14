@@ -9,9 +9,6 @@ var outputarea = React.createClass({
   },
   render: function() {
 	  var s=this.props.log+this.props.lastText;
-    s=s.replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
-      return '<error>'+M+'<\/error>';
-    });
     return (
       <pre ref="outputarea" className="outputarea"
   		dangerouslySetInnerHTML={{__html:s}}/>

@@ -25,8 +25,7 @@ $3F $23 OUTPUT \ 同時設定 0 PB 1 PB ... 5 PB 為 OUTPUT
 : 5T [ $9A18 0 + , ] ; \ 用 machine code 定義 亮熄燈 PB0 的切換 
 : 6T [ $9A4F 0 + , ] ; \ 用 machine code 定義 亮熄燈 PD7 的切換 
 : T ( i -- ) 0
-  BEGIN DUP 12 * [ ' 0T ] LITERAL
-    + EXECUTE W 1+ DUP 6 >
+  BEGIN DUP 12 * [ ' 0T ] LITERAL + EXECUTE W 1+ DUP 6 >
     IF DROP 0
     THEN ?KEY
   UNTIL ;

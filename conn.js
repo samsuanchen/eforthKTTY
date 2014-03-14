@@ -25,7 +25,9 @@ var doConnect_nodewebkit=function(onPortOpen,port,baud,that) {
 	})
 }
 var doWritePort_nodewebkit=function(command) {
-	serialport.write(command+'\r')
+	if (!command||command.charCodeAt(0)>=0x20)
+		command+='\r'
+	serialport.write(command)
 }
 var doClosePort_nodewebkit=function(that) {
 	serialport.close()
