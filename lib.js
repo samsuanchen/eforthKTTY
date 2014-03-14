@@ -37,4 +37,5 @@ module.exports={
   firstOutputByte:firstOutputByte,
 	utf8StrTooLong:utf8StrTooLong,
 	markInp:markInp,
-	markOk:markOk}
+	markOk:markOk
+}

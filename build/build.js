@@ -11845,7 +11845,6 @@ var controlpanel=Require("controlpanel");
 var statusbar=Require("statusbar"); 
 var conn=Require("eforthKTTY/conn");
 var lib=Require("eforthKTTY/lib");
-
 // 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
 // http://facebook.github.io/react/docs/component-specs.html
 var recieved, lastByte, lastText, log='', ok, getOk;
@@ -11853,29 +11852,20 @@ var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
 var ACK_KEY=6;
-var time, cmd, lastCmd;
-var fileName, lines, lineIndex;
-var Error_00=function(j){
-  log+='<error>ERROR#00</error> 328eforth commad too long\r\n';
-  log+='(bytes > 80) NOTE! each Chinese (UTF8) 3 bytes\r\n';
-  log+=cmd.substr(0,j-1)+'<error>'+cmd.substr(j-1)+'</error>';
-  if (fileName) {
-    log+='\r\nAt line '+lineIndex+' of '+fileName;
-  }
-  lines=[];
-  this.setState({'lastText':''});
-}
+var timer, cmd, lastCmd;
+var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
-    return {
-      cmd: "SEE WORDS",
-      port: "COM32",
-      baud: 19200, 
-      connecting: false,
-      system: "328eforth",
-      lineDelay: 0,
-      log: '',
-      lastText: ''};
+    return {  
+      "cmd": "SEE WORDS",
+      "port": "COM32",
+      "baud": 19200, 
+      "connecting": false,
+      "system": "328eforth",
+      "lineDelay": 300,
+      "log": "",
+      "lastText": ""
+    };
   },
   render: function() {
     var connecting=this.state.connecting;
@@ -11884,21 +11874,21 @@ var main = React.createClass({displayName: 'main',
       React.DOM.div( {className:"main"}, 
         titlebar(null),
         outputarea(
-          {log:      log,
-          lastText: this.state.lastText}),
+          {log:       log,
+          lastText:  this.state.lastText}),
         controlpanel(
-          {connecting:  connecting,
-          onClose:  this.closePort,
-          onConnect:this.connectPort,
-          port:     this.state.port,
-          baud:     this.state.baud,
-          onExecute:this.sendCommand,
-          onPasted: this.sendPasted,
-          onXfer:   this.sendFile,
-          system:   this.state.system,
-          lineDelay:this.state.lineDelay}),
+          {connecting:connecting,
+          onClose:   this.closePort,
+          onConnect: this.connectPort,
+          port:      this.state.port,
+          baud:      this.state.baud,
+          onExecute: this.sendCommand,
+          onPasted:  this.sendPasted,
+          onXfer:    this.sendFile,
+          system:    this.state.system,
+          lineDelay: this.state.lineDelay}),
         statusbar( 
-          {hideText: hideText})
+          {hideText:  hideText})
       )
     );
   },
@@ -11916,6 +11906,7 @@ var main = React.createClass({displayName: 'main',
     bHiddenCmd='[ '+hiddenCmd+' ]';
     hide=getOk=false;
     recieved=new Buffer(0);
+    lineDelay=this.state.lineDelay;
     window.onclose=this.closePort;
   },
   onPortRecievedData:function(bytes) {
@@ -11956,17 +11947,8 @@ var main = React.createClass({displayName: 'main',
         hide=false;
       }
       lastText='';
-      if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
-        cmd=lines[lineIndex++];
-        if (cmd!==lastCmd) {
-          console.log("line",lineIndex,cmd);
-          this.sendCommand(cmd);
-        }
-      } else if (lineIndex) {
-        var file=fileName?fileName:'pasted lines';
-        console.log(Date(),this.state.port,"end of",file);
-        fileName='';
-      }
+      clearTimeout(timer);
+      this.sendNextCommand();
     }
     if (!hide) this.setState({'lastText':lastText,'log':log});
   },
@@ -12006,11 +11988,26 @@ var main = React.createClass({displayName: 'main',
     conn.doWritePort(cmd);
     // E. remember current cmd
     lastCmd=cmd;
+    if (lineDelay)
+      timer=setTimeout(this.sendNextCommand,lineDelay);
     // F. hidden cmd processing
     if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
     if (!lines||lineIndex>=lines.length) {
       lines=[hiddenCmd];
       lineIndex=0;
+    }
+  },
+  sendNextCommand:function() {
+    if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
+      cmd=lines[lineIndex++];
+      if (cmd!==lastCmd) {
+        console.log("line",lineIndex,cmd);
+        this.sendCommand(cmd);
+      }
+    } else if (lineIndex) {
+      var file=fileName?fileName:'pasted lines';
+      console.log(Date(),this.state.port,"end of",file);
+      fileName='';
     }
   },
   sendPasted: function (event) {
@@ -28281,7 +28278,8 @@ module.exports={
   firstOutputByte:firstOutputByte,
 	utf8StrTooLong:utf8StrTooLong,
 	markInp:markInp,
-	markOk:markOk}
+	markOk:markOk
+}
 });
 
 
