@@ -12107,7 +12107,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
           defaultValue:this.props.system}
         ),
         " lineDelay ", React.DOM.input( {className:"lineDelayBox",
-          onChange:this.changelineDelay,
+          onChange:this.changeLineDelay,
           defaultValue:this.props.lineDelay}
         )
       )

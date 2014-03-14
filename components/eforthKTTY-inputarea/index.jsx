@@ -33,7 +33,7 @@ var inputarea = React.createClass({
           defaultValue={this.props.system}>
         </input>
         lineDelay <input className="lineDelayBox"
-          onChange={this.changelineDelay}
+          onChange={this.changeLineDelay}
           defaultValue={this.props.lineDelay}>
         </input>
       </div>
