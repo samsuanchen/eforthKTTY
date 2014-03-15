@@ -2,14 +2,9 @@ eforthKTTY -- node webkit serialport 328eforth ksana tty
 
 >>> A. starting eforthKTTY
 
-A01. Before starting eforthKTTY,
-   We need edit the file build.min.js, make sure 'port:"COMxx"'
-   is replaced as 'port:"COM32"', if we communicate with 328eforth
-   on chip atmega328p via COM32. (figure out the port used first)
-   
-A02. DblClick run.bat (or nw.exe) to start eforthKTTY.
+A01. DblClick run.bat (or nw.exe) to start eforthKTTY.
 
-A03. Click 'connect' to connect serial port.
+A02. Click 'connect' to connect specified serial port.
 
 >>> B. note:
 

@@ -31,7 +31,7 @@
   "license": "MIT",
   "main": "index.js",
   "scripts": [
-    "index.js","conn.js","lib.js"
+    "index.js","conn.js","lib.js","settings.js"
   ],
   "styles": [
     "index.css"
