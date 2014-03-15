@@ -47,12 +47,12 @@ var main = React.createClass({
     );
   },
   onPortChange:function(port) {
-    if (!this.state.connecting)
+    if (this.state.connecting)
       this.closePort();
     this.state.port=port;
   },
   onBaudChange:function(baud) {
-    if (!this.state.connecting)
+    if (this.state.connecting)
       this.closePort();
     this.state.baud=baud;
   },

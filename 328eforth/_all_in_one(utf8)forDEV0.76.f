@@ -157,7 +157,9 @@ $9508 CONSTANT INS_RET
 ' ."|     CONSTANT (.") 
 ' doVAR   CONSTANT (CON)
 : H. ( v -- ) <# #S #> TYPE ; 
-: A. ( a -- ) DUP <# # # # # # # #> TYPE SPACE 2/ <# # # # # # # #> TYPE ;
+: A. ( a -- ) DUP <# # # # # # # #>
+  TYPE SPACE 2/
+  <# # # # # # # #> TYPE ;
 : H.R ( v n -- ) >R <# #S #> R> OVER - SPACES TYPE ;
 : Q $22 EMIT ;
 : .STR ( a -- a' )
@@ -404,7 +406,9 @@ FOR NEXT LOW DROP ;
 : HZ ( -- 1 ) 1 ; 
 \ --------------------------------------------------- 328eForthDEV0.76x17
 : PB1_TONE_IO ( flag --  ) \ 0 關閉 非0 開啟 TONE 
-  IF TCCR0A C@ $23 OR TCCR0A C! ELSE TCCR0A C@ $DF AND TCCR0A C! THEN ;
+  IF TCCR0A C@ $23 OR TCCR0A C!
+  ELSE TCCR0A C@ $DF AND TCCR0A C!
+  THEN ;
 : PB2_TONE_IO ( flag --  )
  IF      $80 @ $10 OR  $80 C! 
  ELSE $80 @ $E0 AND $80 C!  

@@ -11842,11 +11842,11 @@ require.register("eforthktty-main/index.js", function(exports, require, module){
 var titlebar=Require("titlebar"); 
 var outputarea=Require("outputarea"); 
 var controlpanel=Require("controlpanel"); 
-var statusbar=Require("statusbar"); 
+var statusbar=Require("statusbar");
+// 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
+// http://facebook.github.io/react/docs/component-specs.html 
 var conn=Require("eforthKTTY/conn");
 var lib=Require("eforthKTTY/lib");
-// 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
-// http://facebook.github.io/react/docs/component-specs.html
 var recieved, lastByte, lastText, log='', ok, getOk;
 var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
@@ -11856,17 +11856,8 @@ var timer, cmd, lastCmd, error=0;
 var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({displayName: 'main',
   getInitialState: function() {
-    return {  
-      "cmd": "SEE WORDS",
-      "port": "COM32",
-      "baud": 19200, 
-      "connecting": false,
-      "system": "328eforth",
-      "lineDelay": 300,
-      "log": "",
-      "lastText": ""
-    };
-  },
+    return nodeRequire('./settings.js');  
+  }, 
   render: function() {
     var connecting=this.state.connecting;
     var className=connecting?'ready':'notReady';
@@ -11896,13 +11887,13 @@ var main = React.createClass({displayName: 'main',
     );
   },
   onPortChange:function(port) {
-    if (!this.state.connecting) return;
-    this.closePort();
+    if (this.state.connecting)
+      this.closePort();
     this.state.port=port;
   },
   onBaudChange:function(baud) {
-    if (!this.state.connecting) return;
-    this.closePort();
+    if (this.state.connecting)
+      this.closePort();
     this.state.baud=baud;
   },
   onChangeLineDelay:function(lineDelay) {
@@ -28319,6 +28310,16 @@ module.exports={
 	markInp:markInp,
 	markOk:markOk
 }
+});
+require.register("eforthKTTY/settings.js", function(exports, require, module){
+module.exports={"cmd": "SEE WORDS",
+"port": "COM32",
+"baud": 19200, 
+"connecting": false,
+"system": "328eforth",
+"lineDelay": 300,
+"log": "",
+"lastText": ""}
 });
 
 
