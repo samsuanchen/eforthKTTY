@@ -43,8 +43,13 @@ var fs=nodeRequire("fs")
 var readFile=function(fileName) {
 	return fs.readFileSync(fileName).toString().split('\r\n');
 }
+var saveState=function(state) {
+	var s="module.exports="+JSON.stringify(state,undefined,' ');
+	return fs.writeFileSync("settings.js",s);
+}
 module.exports={
 	readFile:readFile,
+	saveState:saveState,
 	doConnect:doConnect,
 	doWritePort:doWritePort,
 	doClosePort:doClosePort}

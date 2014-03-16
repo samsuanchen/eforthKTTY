@@ -11873,6 +11873,7 @@ var main = React.createClass({displayName: 'main',
           onConnect: this.connectPort,
           onPortChange:this.onPortChange,
           onBaudChange:this.onBaudChange,
+          onChangeDir:this.onChangeDir,
           onChangeLineDelay:this.onChangeLineDelay,
           port:      this.state.port,
           baud:      this.state.baud,
@@ -11890,14 +11891,21 @@ var main = React.createClass({displayName: 'main',
     if (this.state.connecting)
       this.closePort();
     this.state.port=port;
+    conn.saveState(this.state);
   },
   onBaudChange:function(baud) {
     if (this.state.connecting)
       this.closePort();
     this.state.baud=baud;
+    conn.saveState(this.state);
+  },
+  onChangeDir:function(dir) {
+    this.state.system=dir;
+    conn.saveState(this.state);
   },
   onChangeLineDelay:function(lineDelay) {
     this.state.lineDelay=lineDelay;
+    conn.saveState(this.state);
   },
   onPortOpen:function(e) {
     if (e) {
@@ -12095,6 +12103,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
           defaultValue:this.state.file}
         ),
         " dir ", React.DOM.input( {className:"systemBox",
+          onChange:this.changeDir,
           defaultValue:this.props.system}
         ),
         " lineDelay ", React.DOM.input( {className:"lineDelayBox",
@@ -12110,6 +12119,9 @@ var inputarea = React.createClass({displayName: 'inputarea',
   },
   changeLineDelay: function (e) {
     this.props.onChangeLineDelay(e.target.value.trim());
+  },
+  changeDir: function (e) {
+    this.props.onChangeDir(e.target.value.trim());
   },
   prevLine: function () {
     if (lineIndex) {
@@ -12260,6 +12272,7 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
           onXfer:    this.props.onXfer,
           lineDelay: this.props.lineDelay,
           onChangeLineDelay:this.props.onChangeLineDelay,
+          onChangeDir:this.props.onChangeDir,
           onExecute: this.props.onExecute}),
         connection(
           {connecting:this.props.connecting,
@@ -28262,8 +28275,13 @@ var fs=nodeRequire("fs")
 var readFile=function(fileName) {
 	return fs.readFileSync(fileName).toString().split('\r\n');
 }
+var saveState=function(state) {
+	var s="module.exports="+JSON.stringify(state,undefined,' ');
+	return fs.writeFileSync("settings.js",s);
+}
 module.exports={
 	readFile:readFile,
+	saveState:saveState,
 	doConnect:doConnect,
 	doWritePort:doWritePort,
 	doClosePort:doClosePort}
@@ -28312,14 +28330,16 @@ module.exports={
 }
 });
 require.register("eforthKTTY/settings.js", function(exports, require, module){
-module.exports={"cmd": "SEE WORDS",
-"port": "COM32",
-"baud": 19200, 
-"connecting": false,
-"system": "328eforth",
-"lineDelay": 300,
-"log": "",
-"lastText": ""}
+module.exports={
+ "cmd": "SEE WORDS",
+ "port": "COM33",
+ "baud": 19200,
+ "connecting": false,
+ "system": "328eforth",
+ "lineDelay": 300,
+ "log": "",
+ "lastText": ""
+}
 });
 
 

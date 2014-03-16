@@ -30,6 +30,7 @@ var inputarea = React.createClass({
           defaultValue={this.state.file}>
         </input>
         dir <input className="systemBox"
+          onChange={this.changeDir}
           defaultValue={this.props.system}>
         </input>
         lineDelay <input className="lineDelayBox"
@@ -45,6 +46,9 @@ var inputarea = React.createClass({
   },
   changeLineDelay: function (e) {
     this.props.onChangeLineDelay(e.target.value.trim());
+  },
+  changeDir: function (e) {
+    this.props.onChangeDir(e.target.value.trim());
   },
   prevLine: function () {
     if (lineIndex) {

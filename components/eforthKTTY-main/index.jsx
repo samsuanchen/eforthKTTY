@@ -33,6 +33,7 @@ var main = React.createClass({
           onConnect ={this.connectPort}
           onPortChange={this.onPortChange}
           onBaudChange={this.onBaudChange}
+          onChangeDir={this.onChangeDir}
           onChangeLineDelay={this.onChangeLineDelay}
           port      ={this.state.port}
           baud      ={this.state.baud}
@@ -50,14 +51,21 @@ var main = React.createClass({
     if (this.state.connecting)
       this.closePort();
     this.state.port=port;
+    conn.saveState(this.state);
   },
   onBaudChange:function(baud) {
     if (this.state.connecting)
       this.closePort();
     this.state.baud=baud;
+    conn.saveState(this.state);
+  },
+  onChangeDir:function(dir) {
+    this.state.system=dir;
+    conn.saveState(this.state);
   },
   onChangeLineDelay:function(lineDelay) {
     this.state.lineDelay=lineDelay;
+    conn.saveState(this.state);
   },
   onPortOpen:function(e) {
     if (e) {
