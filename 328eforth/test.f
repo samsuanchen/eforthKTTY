@@ -30,7 +30,11 @@ $3F $23 OUTPUT \ 同時設定 0 PB 1 PB ... 5 PB 為 OUTPUT
     THEN ?KEY
   UNTIL ;
 : F ( n -- ) 2* FOR AFT 0T W THEN NEXT ; FLUSH
-: .s CR DEPTH DUP ." DEPTH" . ?DUP IF ." --" 1- FOR R@ PICK . NEXT THEN ;
+: .s CR DEPTH DUP ." DEPTH" . ?DUP
+  IF ." --" 1-
+     FOR R@ PICK .
+     NEXT
+  THEN ;
 \ FORGET Z
 : Z
   BEGIN  F ?KEY DUP

@@ -16,7 +16,9 @@ var timer, cmd, lastCmd, error=0;
 var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({
   getInitialState: function() {
-    return nodeRequire('./settings.js');  
+    var state=nodeRequire('./settings.js');
+    state.connecting=false;
+    return state;  
   }, 
   render: function() {
     var connecting=this.state.connecting;
