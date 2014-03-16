@@ -1,0 +1,4581 @@
+
+AVRASM ver. 2.1.42  E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm Mon Dec 30 14:16:56 2013
+
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(4): Including file 'C:\Program Files (x86)\Atmel\AVR Tools\AvrAssembler2\Appnotes\m328Pdef.inc'
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3045): warning: Register r20 already defined by the .DEF directive
+                 
+                 
+                 
+                 .list
+                 
+                 ;===============================================================
+                 ;
+                 ;x	328eFORTH DEV 0.77 2013/11/23
+                 ;x		僅留 do_spm 在 bootloader 區
+                 ;x      !!!!! 注意 bootloader 部分要用 studio 重燒 !!!!!
+                 ;	328eFORTH DEV 0.76 2013/11/23
+                 ;		fix COMPILE
+                 ;	328eFORTH DEV 0.75 2013/11/02
+                 ;		將 ret 替換為 jmp INT_handler
+                 ;	328eFORTH DEV 0.74 2013/09/26
+                 ;		每次要讀取一列輸入字串前 先送出 Acknowledge $06
+                 ;	328eFORTH DEV 0.73 2013/09/14
+                 ;		fix abort" and save as uft-8
+                 ;	328eFORTH DEV 0.72 2013/08/16
+                 ;		move out heads of WRITE and ERASE from Bootloader Area
+                 ;   328eFORTH DEV 0.72 2013/08/13
+                 ;		reveal all hidden words (those of no name)
+                 ;   328eFORTH DEV 0.71 2012/10/30
+                 ;       keep whole Arduino boot loader
+                 ;       reamin only ERASE, WRITE, READ in boot loader area
+                 ;		all other words moved out
+                 ;		so that we can directly use .bat to burn .hex
+                 ;	328eFORTH DEV 0.6
+                 ;		INTERRUPT TESTING
+                 ;   328eFORTH DEV 0.5
+                 ;		'CN find cfa and nfa
+                 ;   328eFORTH DEV 0.4
+                 ;       ALLOW_BOOT   2012/8/30
+                 ;   328eFORTH DEV 0.3
+                 ;       ERR_HANDLING 2012/8/23       
+                 ;   328eForth DEV 0.1, Albert, 2012/5/2
+                 ;		Allow defining chinese words 
+                 ;	328eForth v2.20, Chen-Hanson Ting, July 2011
+                 ;		Fix error, quit, 2/ and ?stack
+                 ;
+                 ;	328eForth v2.10, Chen-Hanson Ting, March 2011
+                 ;	Adapted from 
+                 ;		86se4th.asm by Richard Haskell 
+                 ;		Amforth by Matthias Trute
+                 ;	Assembled with AVR Studio 4 from Atmel
+                 ;	-Subroutine threaded model
+                 ;	-Uniform byte addressing for flash, RAM and registers
+                 ;	-Ping-pong block buffers for optimal flash programming
+                 ;	-FORTH interpreter & tools are in NRWW flash
+                 ;	-FORTH compiler & user extension are in RWW flash
+                 ;	-No interrupt, no multitasking 
+                 ;	-turnkey capability
+                 ;	-Case insensitive
+                 ;	-9600 baud, 1 start, 8 data, no parity, 1 stop bit
+                 ;	ANS FORTH compatible, but not compliant.
+                 ;
+                 ;	Subroutine threaded eForth; Version. 1.0, 1991 
+                 ;	by Richard E. Haskell
+                 ;	Dept. of Computer Science and Engineering
+                 ;	Oakland University
+                 ;	Rochester, Michigan 48309
+                 ;
+                 ;	eForth 1.0 by Bill Muench and C. H. Ting, 1990
+                 ;	Much of the code is derived from the following sources:
+                 ;	8086 figForth by Thomas Newman, 1981 and Joe smith, 1983
+                 ;	aFORTH by John Rible
+                 ;	bFORTH by Bill Muench
+                 ;
+                 ;	The goal of this implementation is to provide a simple eForth Model
+                 ;	which can be ported easily to many 8, 16, 24 and 32 bit CPU's.
+                 ;	The following attributes make it suitable for CPU's of the '90:
+                 ;
+                 ;	small machine dependent kernel and portable high level code
+                 ;	subroutine threaded code
+                 ;	single code dictionaries
+                 ;	each word record has a link field, a name field and a code field
+                 ;	simple terminal and file interface to host computer
+                 ;	aligned with the proposed ANS Forth Standard
+                 ;	easy upgrade path to optimize for specific CPU
+                 ;	easy mixing of Forth and assembly language
+                 ;	all assembly language tools can be used directly
+                 ;
+                 ;	You are invited to implement this Model on your favorite CPU and
+                 ;	contribute it to the eForth Library for public use. You may use
+                 ;	a portable implementation to advertise more sophisticated and
+                 ;	optimized version for commercial purposes. However, you are
+                 ;	expected to implement the Model faithfully. The eForth Working
+                 ;	Group reserves the right to reject implementation which deviates
+                 ;	significantly from this Model.
+                 ;
+                 ;	Representing the eForth Working Group in the Silicon Valley FIG Chapter.
+                 ;	Send contributions to:
+                 ;
+                 ;	Dr. Chen-Hanson Ting
+                 ;	156 14th Avenue
+                 ;	San Mateo, CA 94402
+                 ;	(650) 571-7639
+                 ;	ting@offete.com
+                 ;
+                 ;   Ver 0.7 保留Arduino Bootloader (Byeaddress:7800 ~7FA0 , WordAddress: $3C00 ~ $3FD0
+                 ;   原有 328eForth : $3800 ~ $3fc3 。要把$3f8a ~$3fc3 移至$3FD0 , 要去掉Name Field, Link Field($C words) , 爽哥，諶老師，阿貴，毛翔 2012-10-30
+                 ;===============================================================
+                 
+                 ;; Version control
+                 
+                 .EQU	VER	=	2	;major release version
+                 .EQU	EXT	=	2	;minor extension
+                 
+                 ;; Constants
+                 
+                 .EQU	COMPO	=	$040	;lexicon compile only bit
+                 .EQU	IMEDD	=	$080	;lexicon immediate bit
+                 
+                 .EQU	BASEE	=	16		;default radix
+                 
+                 .EQU	BKSPP	=	8		;back space
+                 .EQU	LF		=	10		;line feed
+                 .EQU	CRR		=	13		;carriage return
+                 
+                 .EQU	RETT	=	$9508
+                 .EQU	CALLL	=	$940E
+                 
+                 ;; Memory allocation for ATmega328P, all byte addresses
+                 ;
+                 ;	Flash memory
+                 ;	$0		Reset and interrupt vectors, RWW section
+                 ;	$100	Initial values for variables
+                 ;	$200	Start of compiler and user words
+                 ;	$7000	Start of interpreter words, NRWW section
+                 ;	$7FFF	End of flash memory
+                 ;
+                 ;	RAM memory
+                 ;	$0		CPU and I/O registers
+                 ;	$100	Variables
+                 ;	$120	Free RAM memory
+                 ;	$160	Initial PAD
+                 ;	$4F0	Top of data stack
+                 ;	$700	Terminal input buffer
+                 ;	$7F0	Top of return stack
+                 ;	$800	Flash buffer 0
+                 ;	$880	Flash buffer 1
+                 ;	$8FF	End of RAM memory
+                 
+                 .EQU	RPP		=	$7F0	;start of return stack (RP0)
+                 .EQU	TIBB	=	$700	;terminal input buffer (TIB)
+                 .EQU	UPP		=	$100	;start of user area (UP0)
+                 .EQU	SPP		=	$6F0	;start of data stack (SP0)
+                 
+                 ;;	Flash programmming
+                 
+                 .EQU	BUF0	=	$800
+                 .EQU	BUF1	=	$880
+                 .EQU	NEWER	=	$11C	;flash pointer
+                 .EQU	OLDER	=	$11E	;flash pointer
+                 ; buffer pointer word format:	dirty,page_addr,cell_addr,buf?
+                 
+                 ;; Initialize assembly variable
+                 
+                 .SET _LINK		=	0		;init a null link
+                 
+                 ;	Compile a code definition header.
+                 
+                 .MACRO	CODE				;;LEX,NAME 
+                 	.DW		_LINK*2			;;link pointer
+                 	.SET _LINK	=	pc		;;link points to a name string
+                 _NFA:
+                 	.DB		@0,@1
+                 ;	.DW		_NFA*2			;;保留作分析用途 20131121 sam
+                 	.ENDM
+                 
+                 ;	Colon header is identical to code header.
+                 
+                 ;.MACRO	COLON				;;LEX,NAME,LABEL
+                 ;	.DW		_LINK*2			;;link pointer
+                 ;	.SET _LINK	=	pc		;;link points to a name string
+                 ;	.DB		@0,@1
+                 ;	.ENDM
+                 
+                 ;; Macros defined by amForth
+                 
+                 .DEF zerol = r2
+                 .DEF zeroh = r3
+                 .DEF IVtL  = r4
+                 .DEF IVtH  = r5
+                 .DEF IVaL  = r6
+                 .DEF IVaH  = r7
+                 .DEF IVa0  = r8
+                 .DEF temp4 = r14
+                 .DEF temp5 = r15
+                 .DEF temp0 = r16
+                 .DEF temp1 = r17
+                 .DEF temp2 = r18
+                 .DEF temp3 = r19
+                 .DEF temp6 = r20
+                 .DEF temp7 = r21
+                 .DEF tosl  = r24
+                 .DEF tosh  = r25
+                 ; X R27:R26
+                 ; Y R29:R28 SP (data stack pointer)
+                 ; Z R31:R30
+                 
+                 .macro loadtos	; 從 DATA STACK 取出 TOS
+                 	ld tosl, Y+	; TOSL <- BYTE(SP); SP <- SP+1
+                 	ld tosh, Y+	; TOSH <- BYTE(SP); SP <- SP+1
+                 .endmacro
+                 
+                 .macro savetos	; 將 TOS 放到 DATA STACK
+                 	st -Y, tosh	; SP <- SP-1; BYTE(SP) <- TOSH
+                 	st -Y, tosl	; SP <- SP-1; BYTE(SP) <- TOSL
+                 .endmacro
+                 
+                 ; 語法: in_ @0,@1 將 資料從 io暫存器 @1 放到 一般暫存器 @0
+                 .macro in_
+                 .if (@1 < $40)
+                   	in @0,@1
+                 .else
+                   	lds @0,@1
+                 .endif
+                 .endmacro
+                 ; 語法: out_ @0,@1 將 資料從 一般暫存器 @1 放到 io暫存器 @0
+                 .macro out_
+                 .if (@0 < $40)
+                   	out @0,@1
+                 .else
+                   	sts @0,@1
+                 .endif
+                 .endmacro
+                 
+                 .macro readflashcell
+                 	lsl zl
+                 	rol zh
+                 	lpm @0, Z+
+                 	lpm @1, Z+
+                 .endmacro
+                 
+                 .macro writeflashcell
+                 	lsl zl
+                 	rol zh
+                 .endmacro
+                 
+                 ;; Main entry points and COLD start data
+                 
+                 ; 首先在一般的中斷向量位址上，寫入RCALL指令(1 word長)。因為空間上只允許放入這麼短的指令。(每項只能放 2 words)
+                 ; 其次在後面丁陳老師留的$00~$7F(word address, = byte address $00~$FF) 共128 words = 256 bytes 範圍內放中斷程式導引機制。
+                 
+                 ; ???
+                 ; CALL 先指向 QUIT，日後再把寫好的中斷服務字用高階字 ISR_ASSIGN 塞入，取代QUIT即可。
+                 ;  CALL 的OP CODE為1 word長，不必換。只要換它的operand(也是1 word長)即位址就好。
+                 
+                 ;; Main entry points and COLD start data
+                 
+                 	.CSEG
+                 	
+                 ;	.ORG $3FFA  ; BootLoader $3C00 (Byte Adr $7800) ~ $3FFA (Byte Adr $7FF4) 後面 ; 20131121 sam
+                 	.ORG $3FD0
+                 ERASE:
+003fd0 01fc      	movw	zl,tosl
+003fd1 9189
+003fd2 9199      	loadtos
+                 ERASE_1:
+003fd3 e043      	ldi 	spmcrval, (1<<PGERS) | (1<<SELFPRGEN)
+003fd4 d016      	rcall 	Do_spm
+                 ; re-enable the RWW section
+003fd5 e141      	ldi 	spmcrval, (1<<RWWSRE) | (1<<SELFPRGEN)
+003fd6 c014      	rjmp 	Do_spm
+                 	
+                 WRITE:
+003fd7 01fc      	movw	zl, tosl
+003fd8 9189
+003fd9 9199      	loadtos
+003fda 01dc      	movw	xl, tosl
+003fdb 9189
+003fdc 9199      	loadtos
+                 WRITE_1:
+003fdd e860      	ldi 	looplo, low(PAGESIZEB) ;init loop variable
+                 Wrloop:
+003fde 900d      	ld 		r0, X+
+003fdf 901d      	ld 		r1, X+
+003fe0 e041      	ldi 	spmcrval, (1<<SELFPRGEN)
+003fe1 d009      	rcall 	Do_spm
+003fe2 9632      	adiw 	ZL, 2
+003fe3 5062      	subi 	looplo, 2 ;use subi for PAGESIZEB<=256
+003fe4 f7c9      	brne 	Wrloop
+                 ; execute Page Write
+003fe5 58e0      	subi 	ZL, low(PAGESIZEB) ;restore pointer
+003fe6 40f0      	sbci 	ZH, high(PAGESIZEB) ;not required for PAGESIZEB<=256
+003fe7 e045      	ldi 	spmcrval, (1<<PGWRT) | (1<<SELFPRGEN)
+003fe8 d002      	rcall 	Do_spm
+                 ; re-enable the RWW section
+003fe9 e141      	ldi 	spmcrval, (1<<RWWSRE) | (1<<SELFPRGEN)
+003fea c000      	rjmp 	Do_spm
+                 
+                 do_spm:							; 20131121 sam
+                 Wait_spm:						; 20131121 sam
+                 ; check for previous SPM complete
+003feb b717      	in 		temp1, SPMCSR
+003fec fd10      	sbrc 	temp1, SELFPRGEN
+003fed cffd      	rjmp 	Wait_spm			; 20131121 sam
+                 ; SPM timed sequence
+003fee bf47      	out 	SPMCSR, spmcrval
+003fef 95e8      	spm
+003ff0 9508      	ret
+                 	
+                 	.ORG	0
+                 
+                 ;  建 INTERUPT VECTOR CALL表
+                 							;向量號碼，向量名稱
+000000 940c 0100 	JMP			ORIG		;1, RESET ( 4 byte JUMP )
+000002 940e 004d 	CALL		ISR_HEAD	;2, INT0
+000004 940e 004d 	CALL		ISR_HEAD	;3, INT1
+000006 940e 004d 	CALL		ISR_HEAD	;4, PC0
+000008 940e 004d 	CALL		ISR_HEAD	;5, PC1
+00000a 940e 004d 	CALL		ISR_HEAD	;6, PC2
+00000c 940e 004d 	CALL		ISR_HEAD	;7, WDT
+00000e 940e 004d 	CALL		ISR_HEAD	;8, T2A
+000010 940e 004d 	CALL		ISR_HEAD	;9, T2B
+000012 940e 004d 	CALL		ISR_HEAD	;10,T2OV
+000014 940e 004d 	CALL		ISR_HEAD	;11,T1CAP
+000016 940e 004d 	CALL		ISR_HEAD	;12,T1A
+000018 940e 004d 	CALL		ISR_HEAD	;13,T1B
+00001a 940e 004d 	CALL		ISR_HEAD	;14,T1OV
+00001c 940e 004d 	CALL		ISR_HEAD	;15,T0A
+00001e 940e 004d 	CALL		ISR_HEAD	;16,T0B
+000020 940e 004d 	CALL		ISR_HEAD	;17,T0OV
+000022 940e 004d 	CALL		ISR_HEAD	;18,SPI
+000024 940e 004d 	CALL		ISR_HEAD	;19,URX
+000026 940e 004d 	CALL		ISR_HEAD	;20,UDE
+000028 940e 004d 	CALL		ISR_HEAD	;21,UTX
+00002a 940e 004d 	CALL		ISR_HEAD	;22,ADC
+00002c 940e 004d 	CALL		ISR_HEAD	;23,EERDY
+00002e 940e 004d 	CALL		ISR_HEAD	;24,CMP
+000030 940e 004d 	CALL		ISR_HEAD	;25,TWI
+000032 940e 004d 	CALL		ISR_HEAD	;26,SPMRDY
+                 ; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+                 ; $34 ~ $64  = #2 ~ #26 
+                 	.ORG	$34   ; 高階 FORTH 中斷地址存放表
+                 	; $34 = #2, INT0
+                 	; $35 = #3, INT1
+                 	; $36 = #4, PC0
+                 	; $37 = #5, PC1
+                 	; $38 = #6, PC2
+                 	; $39 = #7, WDT
+                 	; $3A = #8, T2A
+                 	; $3B = #9, T2B
+                 	; $3C = #10,T2OV
+                 	; $3D = #11,T1CAP
+                 	; $3E = #12,T1A
+                 	; $3F = #13,T1B
+                 	; $40 = #14,T1OV
+                 	; $41 = #15,T0A
+                 	; $42 = #16,T0B
+                 	; $43 = #17,T0OV
+                 	; $44 = #18,SPI
+                 	; $45 = #19,URX
+                 	; $46 = #20,UDE
+                 	; $47 = #21,UTX
+                 	; $48 = #22,ADC
+                 	; $49 = #23,EERDY
+                 	; $4A = #24,CMP
+                 	; $4B = #25,TWI
+                 	; $4C = #26,SPMRDY
+                 	.ORG	$4D   ; 
+                 ; FIRST AID for ISR ，先快速把中斷訊息記下(存到 R5)，再回到符式系統
+                 ;      
+                 ISR_HEAD:	; 會改變 R4, R5 
+00004d b64f      	IN  IVtL, SREG ; 將 SREG 備存
+00004e 907f      	POP IVaH ; 忽略 return address high byte
+00004f 906f      	POP IVaL ; 取出 return address low  byte
+000050 9466      	LSR IVaL ; 除 2 (每個 interrupt 佔 1 word)
+000051 9488      	CLC
+000052 0c68      	ADD IVaL,IVa0 ; 算出 高階 interrupt vector 表位
+000053 be4f      	OUT SREG, IVtL ; 將 SREG 還原
+000054 9508      	RET ; 
+                 	
+                 INT_handler:
+000055 2066      	TST IVaL
+000056 f061      	BREQ IVret
+000057 2e4a      	MOV IVtL, xl ; 將 x 備存
+000058 2e5b      	MOV IVtH, xh
+000059 2da6      	MOV xl, IVaL
+00005a 27bb      	CLR xh
+00005b 906d      	LD IVaL, X+ ; 高階 interrupt service routine 位址
+00005c 907c      	LD IVaH, X
+00005d 2db5      	MOV xh, IVtH ; 將 x 還原
+00005e 2da4      	MOV xl, IVtL
+00005f 926f      	PUSH IVaL
+000060 927f      	PUSH IVaH
+000061 2466      	CLR	IVaL
+000062 9518      	RETI
+000063 9508      IVret:	RET
+                 ; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+                 
+                 
+                 	.ORG	$80		;byte address $100, copy to ram on boot, 
+                 					;saved from ram for turnkey system
+                 	
+                 UZERO:	
+000080 1324      	.DW		HI*2	;'BOOT
+000081 0000      	.DW		0		;reserved
+000082 0010      	.DW		BASEE	;BASE
+000083 0000      	.DW		0		;tmp
+000084 0000      	.DW		0		;SPAN
+000085 0000      	.DW		0		;>IN
+000086 0000      	.DW		0		;#TIB
+000087 0700      	.DW		TIBB	;TIB
+000088 1138      	.DW		INTER*2	;'EVAL
+000089 0000      	.DW		0		;HLD
+00008a 1916      	.DW		LASTN	;CONTEXT pointer
+00008b 1964      	.DW		CTOP	;CP
+00008c 0140      	.DW		DTOP	;DP
+00008d 1916      	.DW		LASTN	;LAST
+00008e 6f00      	.DW		$6F00	;PTR0 to BUF0
+00008f 6f81      	.DW		$6F81	;PTR1 to BUF1
+                 ULAST:
+                 
+                 ;;	.ORG	$3800	;byte address $7000
+                 	.ORG	$100	;byte address $7000
+                 ORIG:	
+000100 b6a4      	in_ 	r10, MCUSR
+000101 24bb      	clr 	r11
+000102 2422      	clr 	zerol
+000103 2433      	clr 	zeroh
+000104 2466      	clr		IVaL
+000105 be24      	out_ 	MCUSR, zerol
+                 	; init return stack pointer
+000106 efa0      	ldi 	xl,low(RPP)
+000107 bfad      	out_ 	SPL,xl
+000108 e0b7      	ldi 	xh,high(RPP)
+000109 bfbe      	out_ 	SPH,xh
+                 	; init parameter stack pointer
+00010a efc0      	ldi 	yl,low(SPP)
+00010b e0d6      	ldi 	yh,high(SPP)
+                 	; jump to Forth starting word
+00010c 940c 09a2 	jmp 	COLD
+                 
+                 
+                 
+                 ;   ?RX	( -- c T | F )
+                 ;	Return input character and true, or a false if no input.
+                 
+00010e 0000
+00010f 3f04
+000110 454b
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(439): macro 'CODE' called here
+000111 0059      	CODE	4,"?KEY"
+                 QRX:
+                 QKEY:
+000112 939a
+000113 938a      	savetos
+000114 2788      	clr 	tosl		; 20131121 sam 應可刪除
+000115 2799      	clr 	tosh		; 20131121 sam 應可刪除
+000116 01c1      	movw	tosl,zerol
+000117 91a0 00c0 	in_		xl,UCSR0A
+000119 ffa7      	sbrs	xl,7
+00011a 940c 0055 	jmp INT_handler
+00011c 9180 00c6 	in_		tosl,UDR0
+00011e 939a
+00011f 938a      	savetos
+000120 ef8f      	ser		tosl
+000121 ef9f      	ser		tosh
+000122 940c 0055 	jmp INT_handler
+                 
+                 ;   TX!	( c -- )
+                 ;	Send character c to the output device.
+                 
+000124 021e
+000125 4504
+000126 494d
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(458): macro 'CODE' called here
+000127 0054      	CODE	4,"EMIT"
+                 EMIT:
+                 TXSTO:	
+000128 91a0 00c0 	in_		xl,UCSR0A
+00012a ffa5      	sbrs	xl,5
+00012b cffc      	rJMP	TXSTO
+00012c 9380 00c6 	out_	UDR0,tosl
+00012e 9189
+00012f 9199      	loadtos
+000130 940c 0055 	jmp INT_handler
+                 
+                 ;   !IO	( -- )
+                 ;	Initialize the serial I/O devices.
+                 
+000132 024a
+000133 2103
+000134 4f49      	CODE	3,"!IO"
+                 STOIO:
+000135 e3a3      	ldi		xl,$33	;19200 baud
+                 ;	ldi		xl,$66	;9600 baud
+000136 93a0 00c4 	out_	UBRR0L,xl
+000138 27aa      	clr		xl
+000139 93a0 00c5 	out_	UBRR0H,xl
+00013b e1a8      	ldi		xl,$18	;enable TX and RX
+00013c 93a0 00c1 	out_	UCSR0B,xl
+00013e e0a6      	ldi		xl,6	;8 data bits
+00013f 93a0 00c2 	out_	UCSR0C,xl
+000141 940c 0055 	jmp INT_handler
+                 
+                 ;; The kernel
+                 
+                 ;   doLIT	( -- w )
+                 ;	Push an inline literal.
+                 
+000143 0266
+000144 6445
+000145 4c6f
+000146 5449      	CODE	COMPO+5,"doLIT"
+                 DOLIT:
+000147 939a
+000148 938a      	savetos
+000149 91ff      	pop		zh
+00014a 91ef      	pop		zl
+00014b 0fee
+00014c 1fff
+00014d 9185
+00014e 9195      	readflashcell tosl,tosh
+00014f 95f7      	ror		zh
+000150 95e7      	ror		zl
+000151 93ef      	push	zl
+000152 93ff      	push	zh
+000153 940c 0055 	jmp INT_handler
+                 
+                 ;   next	( -- )
+                 ;	Run time code for the single index loop.
+                 
+000155 0288
+000156 6e44
+000157 7865
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(504): macro 'CODE' called here
+000158 0074      	CODE	COMPO+4,"next"
+                 DONXT:
+000159 91ff      	POP		zh	;return addr
+00015a 91ef      	POP		zl	;
+00015b 91bf      	pop		xh	;count
+00015c 91af      	pop		xl
+00015d 9711      	sbiw	xl, 1
+00015e f42c      	brge	NEXT1
+00015f 9631      	adiw	zl,1
+000160 93ef      	push	zl
+000161 93ff      	push	zh
+000162 940c 0055 	jmp INT_handler
+                 NEXT1:	
+000164 93af      	push	xl	;push count back
+000165 93bf      	push	xh	
+000166 0fee
+000167 1fff
+000168 91a5
+000169 91b5      	readflashcell	xl,xh
+00016a 93af      	push	xl
+00016b 93bf      	push	xh
+00016c 940c 0055 	jmp INT_handler
+                 
+                 ;   ?branch	( f -- )
+                 ;	Branch if flag is zero.
+                 
+00016e 02ac
+00016f 3f47
+000170 7262
+000171 6e61
+000172 6863      	CODE	COMPO+7,"?branch"
+                 QBRAN:
+000173 91ff      	pop		zh
+000174 91ef      	pop		zl
+000175 2b89      	or		tosl, tosh
+000176 9189
+000177 9199      	loadtos
+000178 f061      	breq	BRAN1
+000179 9631      	adiw	zl,1
+00017a 93ef      	push	zl
+00017b 93ff      	push	zh
+00017c 940c 0055 	jmp INT_handler
+                 
+                 ;   branch	( -- )
+                 ;	Branch to an inline address.
+                 
+00017e 02de
+00017f 6246
+000180 6172
+000181 636e
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(542): macro 'CODE' called here
+000182 0068      	CODE	COMPO+6,"branch"
+                 BRAN:	
+000183 91ff      	pop		zh
+000184 91ef      	pop		zl
+                 BRAN1:	
+000185 0fee
+000186 1fff
+000187 91a5
+000188 91b5      	readflashcell xl,xh
+000189 93af      	push	xl
+00018a 93bf      	push	xh
+00018b 940c 0055 	jmp INT_handler
+                 
+                 ;   EXECUTE	( b -- )
+                 ;	Execute the word at ca=b/2.
+                 
+00018d 02fe
+00018e 4507
+00018f 4558
+000190 5543
+000191 4554      	CODE	7,"EXECUTE"
+                 EXECU:
+000192 9595      	asr		tosh	;b/2
+000193 9587      	ror		tosl
+000194 938f      	push	tosl
+000195 939f      	push	tosh
+000196 9189
+000197 9199      	loadtos
+000198 940c 0055 	jmp INT_handler
+                 
+                 ;   EXIT	( -- )
+                 ;	Terminate current colon word.
+                 
+00019a 031c
+00019b 4504
+00019c 4958
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(567): macro 'CODE' called here
+00019d 0054      	CODE	4,"EXIT"
+                 EXIT:
+00019e 91bf      	pop		xh
+00019f 91af      	pop		xl
+0001a0 940c 0055 	jmp INT_handler
+                 
+                 ;   !	( w a -- )
+                 ;	Pop the data stack to memory.
+                 
+0001a2 0336
+0001a3 2101      	CODE	1,"!"
+                 STORE:
+0001a4 01fc      	movw 	zl, tosl
+0001a5 9189
+0001a6 9199      	loadtos
+0001a7 8391      	std 	Z+1, tosh
+0001a8 8380      	std 	Z+0, tosl
+0001a9 9189
+0001aa 9199      	loadtos
+0001ab 940c 0055 	jmp INT_handler
+                 
+                 ;   @	( a -- w )
+                 ;	Push memory location to the data stack.
+                 
+0001ad 0346
+0001ae 4001      	CODE	1,"@"
+                 AT:
+0001af 01fc      	movw 	zl, tosl
+0001b0 9181      	ld 		tosl, z+
+0001b1 9191      	ld 		tosh, z+
+0001b2 940c 0055 	jmp INT_handler
+                 
+                 ;   I@	( a -- w )
+                 ;	Push flash memory cell to the data stack.
+                 
+0001b4 035c
+0001b5 4902
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(598): macro 'CODE' called here
+0001b6 0040      	CODE	2,"I@"
+                 IAT:
+0001b7 df8f      	RCALL	DOLIT
+0001b8 011c      	.DW		NEWER
+0001b9 d042      	RCALL	BUFQ	;n a new?
+0001ba dfb8      	RCALL	QBRAN	;if a=new, fetch n in new_buf
+0001bb 01c6      	.DW		IAT1	;else, a=old?
+0001bc df8a      	RCALL	DOLIT	;n a a old
+0001bd 011e      	.DW		OLDER
+0001be d03d      	RCALL	BUFQ	;n a old?
+0001bf dfb3      	RCALL	QBRAN	;if a=old, fetch n in old_buf
+0001c0 01c9      	.DW		IAT2	
+0001c1 01fc      	movw 	zl, tosl	;else, fetch from flash
+0001c2 9185      	lpm		tosl, z+
+0001c3 9195      	lpm		tosh, z+
+0001c4 940c 0055 	jmp INT_handler
+                 IAT1:
+0001c6 df80      	RCALL	DOLIT
+0001c7 011c      	.DW		NEWER
+0001c8 c002      	RJMP	IAT3
+                 IAT2:
+0001c9 df7d      	RCALL	DOLIT
+0001ca 011e      	.DW		OLDER
+                 IAT3:
+0001cb d03c      	RCALL	BUFAT
+0001cc cfe2      	RJMP	AT
+                 
+                 ;   IC@	( a -- w )
+                 ;	Push flash memory byte to the data stack.
+                 
+0001cd 036a
+0001ce 4903
+0001cf 4043      	CODE	3,"IC@"
+                 ICAT:
+0001d0 df76      	RCALL	DOLIT
+0001d1 011c      	.DW		NEWER
+0001d2 d029      	RCALL	BUFQ	;n a new?
+0001d3 df9f      	RCALL	QBRAN	;if a=new, fetch n in new_buf
+0001d4 01df      	.DW		ICAT1	;else, a=old?
+0001d5 df71      	RCALL	DOLIT	;n a a old
+0001d6 011e      	.DW		OLDER
+0001d7 d024      	RCALL	BUFQ	;n a old?
+0001d8 df9a      	RCALL	QBRAN	;if a=old, fetch n in old_buf
+0001d9 01e2      	.DW		ICAT2	
+0001da 01fc      	movw 	zl, tosl	;else, fetch from flash
+0001db 2799      	clr 	tosh
+0001dc 9184      	lpm 	tosl, Z
+0001dd 940c 0055 	jmp INT_handler
+                 ICAT1:
+0001df df67      	RCALL	DOLIT
+0001e0 011c      	.DW		NEWER
+0001e1 c002      	RJMP	ICAT3
+                 ICAT2:
+0001e2 df64      	RCALL	DOLIT
+0001e3 011e      	.DW		OLDER
+                 ICAT3:
+0001e4 d023      	RCALL	BUFAT
+0001e5 c0c6      	RJMP	CAT
+                 
+0001e6 039c
+0001e7 4206
+0001e8 4655
+0001e9 4546
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(655): macro 'CODE' called here
+0001ea 0052      	CODE	6,"BUFFER"	; ptr -- buf
+                 BUFFER:
+0001eb df5b      	RCALL	DOLIT
+0001ec 0001      	.DW		$1
+0001ed d12c      	RCALL	ANDD
+0001ee df84      	RCALL	QBRAN
+0001ef 01f4      	.DW		BUF_1
+0001f0 df56      	RCALL	DOLIT
+0001f1 0880      	.DW		BUF1
+0001f2 940c 0055 	jmp INT_handler	
+                 BUF_1:
+0001f4 df52      	RCALL	DOLIT
+0001f5 0800      	.DW		BUF0
+0001f6 940c 0055 	jmp INT_handler
+                 
+0001f8 03ce
+0001f9 4204
+0001fa 4655
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(670): macro 'CODE' called here
+0001fb 003f      	CODE	4,"BUF?"	; a new/old -- f
+                 BUFQ:
+0001fc dfb2      	RCALL	AT
+0001fd d10a      	RCALL	OVER
+0001fe d12d      	RCALL	XORR
+0001ff df47      	RCALL	DOLIT
+000200 7f80      	.DW		$7F80
+000201 d118      	RCALL	ANDD
+000202 940c 0055 	jmp INT_handler
+                 
+000204 03f2
+000205 4204
+000206 4655
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(680): macro 'CODE' called here
+000207 0040      	CODE	4,"BUF@"	; a new/old -- buuf_addr
+                 BUFAT:
+000208 dfa6      	RCALL	AT
+000209 dfe1      	RCALL	BUFFER
+00020a d0f2      	RCALL	SWAPP
+00020b df3b      	RCALL	DOLIT
+00020c 007f      	.DW		$7F
+00020d d10c      	RCALL	ANDD
+00020e c11d      	RJMP	XORR
+                 
+                 ;   I!	( w a -- )
+                 ;	Store w to flash memory byte location.
+                 
+00020f 040a
+000210 4902
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(693): macro 'CODE' called here
+000211 0021      	CODE	2,"I!"
+                 ISTOR:				;a=new?
+000212 df34      	RCALL	DOLIT
+000213 011c      	.DW		NEWER
+000214 dfe7      	RCALL	BUFQ	;n a a new_ptr
+000215 df5d      	RCALL	QBRAN	;if a=new, store n in new_buf
+000216 0228      	.DW		ISTOR5	;else, a=old?
+                 ;
+000217 df2f      	RCALL	DOLIT	;n a a old
+000218 011e      	.DW		OLDER
+000219 dfe2      	RCALL	BUFQ	;n a a old_ptr
+00021a df58      	RCALL	QBRAN	;if a=old, switch ptrs, store n in new_buf
+00021b 0227      	.DW		ISTOR4	;else, flush old_buf
+                 
+00021c df2a      	RCALL	DOLIT	;n a old
+00021d 011e      	.DW		OLDER
+00021e df90      	RCALL	AT	;n a old_ptr 
+00021f df27      	RCALL	DOLIT	;n a dirty?
+000220 8000      	.DW		$8000
+000221 d0f8      	RCALL	ANDD
+000222 df50      	RCALL	QBRAN	;if not dirty, go read flash data into old_buf
+000223 0225      	.DW		ISTOR2	;else, flush old_buf to flash
+                 
+000224 d008      ISTOR1:	RCALL	FLUSH_OLD
+000225 d01a      ISTOR2:	RCALL	READ_FLASH
+000226 d028      ISTOR3:	RCALL	UPDATE_OLD
+000227 d03b      ISTOR4:	RCALL	SWITCH
+000228 c04a      ISTOR5:	RJMP 	UPDATE_NEW
+                 
+000229 0420
+00022a 4605
+00022b 554c
+00022c 4853      	CODE	5,"FLUSH"	; --
+                 FLUSH_OLD:
+00022d df19      	RCALL	DOLIT	;old
+00022e 011e      	.DW		OLDER
+00022f df7f      	RCALL	AT	;old_ptr
+000230 d0c4      	RCALL	DUPP	;old_ptr old_ptr
+000231 df15      	RCALL	DOLIT
+000232 7f80      	.DW		$7F80
+000233 d0e6      	RCALL	ANDD	;old_ptr flash_addr 
+000234 d0c0      	RCALL	DUPP	;old_ptr flash_addr flash_addr
+000235 940e 3fd0 	CALL	ERASE	;old_ptr flash_addr
+                 ;
+000237 d0c5      	RCALL	SWAPP	;flash_addr old_ptr 
+000238 dfb2      	RCALL	BUFFER	;flash_addr buf
+000239 d0c3      	RCALL	SWAPP	;buf flash_addr
+00023a 940c 3fd7 	JMP		WRITE
+                 
+00023c 0454
+00023d 4004
+00023e 4c4f
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(739): macro 'CODE' called here
+00023f 0044      	CODE	4,"@OLD"	;a -- a
+                 READ_FLASH:	;read new flash data into old_buf
+000240 df06      	RCALL	DOLIT	;a old
+000241 011e      	.DW		OLDER
+000242 df6c      	RCALL	AT		;a old_ptr
+000243 dfa7      	RCALL	BUFFER	;a buf
+000244 d0c3      	RCALL	OVER	;a buf a
+000245 df01      	RCALL	DOLIT
+000246 7f80      	.DW		$7F80
+000247 d0d2      	RCALL	ANDD	;a buf flash_addr
+000248 d0b4      	RCALL	SWAPP	;a flash_addr buf
+000249 940c 09cd 	JMP	READ		;a
+                 
+00024b 047a
+00024c 2104
+00024d 4c4f
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(752): macro 'CODE' called here
+00024e 0044      	CODE	4,"!OLD"	;a --
+                 UPDATE_OLD:			;preserve buf? bit
+00024f d0a5      	RCALL	DUPP	;a a
+000250 def6      	RCALL	DOLIT	;
+000251 7f80      	.DW		$7F80
+000252 d0c7      	RCALL	ANDD	;a page_addr
+000253 def3      	RCALL	DOLIT
+000254 011e      	.DW		OLDER	;a page_addr old
+000255 d0a7      	RCALL	SWAPP	;a old page_addr
+000256 d0b1      	RCALL	OVER	;a old page_addr old
+000257 df57      	RCALL	AT		;a old page_addr old_ptr
+000258 deee      	RCALL	DOLIT
+000259 0001      	.DW		$1
+00025a d0bf      	RCALL	ANDD	;a old page_addr buf?
+00025b d0c7      	RCALL	ORR		;a old updates_old_ptr
+00025c d0a0      	RCALL	SWAPP	;a old_ptr old
+00025d cf46      	RJMP	STORE	;a
+                 
+00025e 0498
+00025f 5306
+000260 4957
+000261 4354
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(770): macro 'CODE' called here
+000262 0048      	CODE	6,"SWITCH"	; --
+                 SWITCH:	
+000263 dee3      	RCALL	DOLIT	;old
+000264 011e      	.DW		OLDER
+000265 df49      	RCALL	AT		;old_ptr
+000266 dee0      	RCALL	DOLIT	;old_ptr new
+000267 011c      	.DW		NEWER
+000268 df46      	RCALL	AT		;old_ptr new_ptr
+000269 dedd      	RCALL	DOLIT	;old_ptr new_ptr old
+00026a 011e      	.DW		OLDER
+00026b df38      	RCALL	STORE	;old_ptr
+00026c deda      	RCALL	DOLIT	;old_ptr new
+00026d 011c      	.DW		NEWER
+00026e cf35      	RJMP	STORE	; 
+                 	
+00026f 04be
+000270 2104
+000271 454e
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(785): macro 'CODE' called here
+000272 0057      	CODE	4,"!NEW"	;n a --
+                 UPDATE_NEW:			;write data to new buufer, set dirty bit
+000273 ded3      	RCALL	DOLIT	;n a 7e
+000274 007e      	.DW		$7E
+000275 d0a4      	RCALL	ANDD	;n disp
+000276 ded0      	RCALL	DOLIT	;n disp new
+000277 011c      	.DW		NEWER
+000278 df36      	RCALL	AT		;n disp new_ptr
+000279 df71      	RCALL	BUFFER	;n disp buf
+                 UPDAT1:
+00027a d0a8      	RCALL	ORR		;n buff_addr
+00027b df28      	RCALL	STORE	;update word in new_buf
+                 
+00027c deca      	RCALL	DOLIT	;set dirty bit in newer
+00027d 011c      	.DW		NEWER
+00027e d076      	RCALL	DUPP	;newer newer
+00027f df2f      	RCALL	AT		;newer new_ptr
+000280 dec6      	RCALL	DOLIT
+000281 8000      	.DW		$8000
+000282 d0a0      	RCALL	ORR		;newer new_ptr_dirty
+000283 d079      	RCALL	SWAPP
+000284 cf1f      	RJMP	STORE	;new buf is dirty now
+                 
+                 ;	EMPTY-BUFFERS ( -- )
+000285 04e0
+000286 4605
+000287 554c
+000288 4853      	CODE	5,"FLUSH"
+                 
+                 EMPTY_BUF:
+000289 d003      	RCALL	EMPTY_OLD
+00028a dfd8      	RCALL	SWITCH
+00028b d001      	RCALL	EMPTY_OLD
+00028c cfd6      	RJMP	SWITCH
+                 
+                 ;	EMPTY_OLD	;flush old buffer if it is dirty
+                 
+                 EMPTY_OLD:
+00028d deb9      	RCALL	DOLIT	;old
+00028e 011e      	.DW		OLDER
+00028f df1f      	RCALL	AT		;old_ptr 
+000290 d064      	RCALL	DUPP	;old_ptr old_ptr
+000291 deb5      	RCALL	DOLIT	;
+000292 8000      	.DW		$8000
+000293 d086      	RCALL	ANDD	;old_ptr dirty?
+000294 dede      	RCALL	QBRAN	;if not dirty, exit
+000295 029d      	.DW		EMPTY_1	;else, flush old_buf
+                 ;
+000296 deb0      	RCALL	DOLIT	;old_ptr
+000297 7fff      	.DW		$7FFF
+000298 d081      	RCALL	ANDD	;old_ptr, dirty bit cleared
+000299 dead      	RCALL	DOLIT
+00029a 011e      	.DW		OLDER
+00029b df08      	RCALL	STORE	;old_ptr flash_addr
+00029c cf90      	RJMP	FLUSH_OLD
+                 EMPTY_1:
+00029d c050      	RJMP	DROP
+                 
+                 ;   C!	( c b -- )
+                 ;	Pop the data stack to byte memory.
+                 
+00029e 050c
+00029f 4302
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(843): macro 'CODE' called here
+0002a0 0021      	CODE	2,"C!"
+                 CSTOR:
+0002a1 01fc      	movw 	zl, tosl
+0002a2 9189
+0002a3 9199      	loadtos
+0002a4 8380      	st 		Z, tosl
+0002a5 9189
+0002a6 9199      	loadtos
+0002a7 940c 0055 	jmp INT_handler
+                 
+                 ;   C@	( b -- c )
+                 ;	Push byte memory location to the data stack.
+                 
+0002a9 053e
+0002aa 4302
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(854): macro 'CODE' called here
+0002ab 0040      	CODE	2,"C@"
+                 CAT:
+0002ac 01fc      	movw 	zl, tosl
+0002ad 2799      	clr 	tosh
+0002ae 8180      	ld 		tosl, Z
+0002af 940c 0055 	jmp INT_handler
+                 
+                 ;   R>	( -- w )
+                 ;	Pop the return stack to the data stack.
+                 
+0002b1 0554
+0002b2 5242
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(864): macro 'CODE' called here
+0002b3 003e      	CODE	COMPO+2,"R>"
+                 RFROM:
+0002b4 939a
+0002b5 938a      	savetos
+0002b6 91bf      	pop		xh
+0002b7 91af      	pop		xl
+0002b8 919f      	pop 	tosh
+0002b9 918f      	pop 	tosl
+0002ba 93af      	push 	xl
+0002bb 93bf      	push 	xh
+0002bc 940c 0055 	jmp INT_handler
+                 
+                 ;   R@	( -- w )
+                 ;	Copy top of return stack to the data stack.
+                 
+0002be 0564
+0002bf 5202
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(878): macro 'CODE' called here
+0002c0 0040      	CODE	2,"R@"
+                 RAT:
+0002c1 939a
+0002c2 938a      	savetos
+0002c3 91bf      	pop		xh
+0002c4 91af      	pop		xl
+0002c5 919f      	pop 	tosh
+0002c6 918f      	pop 	tosl
+0002c7 938f      	push 	tosl
+0002c8 939f      	push 	tosh
+0002c9 93af      	push 	xl
+0002ca 93bf      	push 	xh
+0002cb 940c 0055 	jmp INT_handler
+                 
+                 ;   >R	( w -- )
+                 ;	Push the data stack to the return stack.
+                 
+0002cd 057e
+0002ce 3e42
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(894): macro 'CODE' called here
+0002cf 0052      	CODE	COMPO+2,">R"
+                 TOR:
+0002d0 91bf      	pop		xh
+0002d1 91af      	pop		xl
+0002d2 938f      	push 	tosl
+0002d3 939f      	push 	tosh
+0002d4 93af      	push 	xl
+0002d5 93bf      	push 	xh
+0002d6 9189
+0002d7 9199      	loadtos
+0002d8 940c 0055 	jmp INT_handler
+                 
+                 ;   SP@	( -- a )
+                 ;	Push the current data stack pointer.
+                 
+0002da 059c
+0002db 5303
+0002dc 4050      	CODE	3,"SP@"
+                 SPAT:
+0002dd 939a
+0002de 938a      	savetos
+0002df 01ce      	movw	tosl, yl
+0002e0 940c 0055 	jmp INT_handler
+                 
+                 ;   SP!	( a -- )
+                 ;	Set the data stack pointer.
+                 
+0002e2 05b6
+0002e3 5303
+0002e4 2150      	CODE	3,"SP!"
+                 SPSTO:
+0002e5 01ec      	movw 	yl, tosl
+0002e6 9189
+0002e7 9199      	loadtos
+0002e8 940c 0055 	jmp INT_handler
+                 
+                 ;   DROP	( w -- )
+                 ;	Discard top stack item.
+                 
+0002ea 05c6
+0002eb 4404
+0002ec 4f52
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(926): macro 'CODE' called here
+0002ed 0050      	CODE	4,"DROP"
+                 DROP:
+0002ee 9189
+0002ef 9199      	loadtos
+0002f0 940c 0055 	jmp INT_handler
+                 
+                 ;   DUP	( w -- w w )
+                 ;	Duplicate the top stack item.
+                 
+0002f2 05d6
+0002f3 4403
+0002f4 5055      	CODE	3,"DUP"
+                 DUPP:
+0002f5 939a
+0002f6 938a      	savetos
+0002f7 940c 0055 	jmp INT_handler
+                 
+                 ;   SWAP	( w1 w2 -- w2 w1 )
+                 ;	Exchange top two stack items.
+                 
+0002f9 05e6
+0002fa 5304
+0002fb 4157
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(942): macro 'CODE' called here
+0002fc 0050      	CODE	4,"SWAP"
+                 SWAPP:
+0002fd 01dc      	movw 	xl, tosl
+0002fe 9189      	ld		tosl,Y+
+0002ff 9199      	ld		tosh,Y+
+000300 93ba      	st 		-Y, xh
+000301 93aa      	st 		-Y, xl
+000302 940c 0055 	jmp INT_handler
+                 
+                 ;   OVER	( w1 w2 -- w1 w2 w1 )
+                 ;	Copy second stack item to top.
+                 
+000304 05f4
+000305 4f04
+000306 4556
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(954): macro 'CODE' called here
+000307 0052      	CODE	4,"OVER"
+                 OVER:
+000308 939a
+000309 938a      	savetos
+00030a 818a      	ldd 	tosl, Y+2
+00030b 819b      	ldd 	tosh, Y+3
+00030c 940c 0055 	jmp INT_handler
+                 
+                 ;   0<	( n -- t )
+                 ;	Return true if n is negative.
+                 
+00030e 060a
+00030f 3002
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(964): macro 'CODE' called here
+000310 003c      	CODE	2,"0<"
+                 ZLESS:
+000311 2399      	tst 	tosh
+000312 01c1      	movw 	tosl, zerol
+000313 f40c      	brge 	ZLESS1
+000314 9701      	sbiw 	tosl,1
+                 ZLESS1:
+000315 940c 0055 	jmp INT_handler
+                 
+                 ;   AND	( w w -- w )
+                 ;	Bitwise AND.
+                 
+000317 061e
+000318 4103
+000319 444e      	CODE	3,"AND"
+                 ANDD:
+00031a 91a9      	ld 		xl, Y+
+00031b 91b9      	ld 		xh, Y+
+00031c 238a      	and 	tosl, xl
+00031d 239b      	and 	tosh, xh
+00031e 940c 0055 	jmp INT_handler
+                 
+                 ;   OR	( w w -- w )
+                 ;	Bitwise inclusive OR.
+                 
+000320 0630
+000321 4f02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(987): macro 'CODE' called here
+000322 0052      	CODE	2,"OR"
+                 ORR:
+000323 91a9      	ld 		xl, Y+
+000324 91b9      	ld 		xh, Y+
+000325 2b8a      	or 		tosl, xl
+000326 2b9b      	or 		tosh, xh
+000327 940c 0055 	jmp INT_handler
+                 
+                 ;   XOR	( w w -- w )
+                 ;	Bitwise exclusive OR.
+                 
+000329 0642
+00032a 5803
+00032b 524f      	CODE	3,"XOR"
+                 XORR:
+00032c 91a9      	ld 		xl, Y+
+00032d 91b9      	ld 		xh, Y+
+00032e 278a         	eor 	tosl, xl
+00032f 279b      	eor 	tosh, xh
+000330 940c 0055 	jmp INT_handler
+                 
+                 ;   UM+	( u u -- udsum )
+                 ;	Add two unsigned single numbers and return a double sum.
+                 
+000332 0654
+000333 5503
+000334 2b4d      	CODE	3,"UM+"
+                 UPLUS:
+000335 91a9      	ld 		xl, Y+
+000336 91b9      	ld 		xh, Y+
+000337 0f8a      	add 	tosl, xl
+000338 1f9b      	adc 	tosh, xh
+000339 939a
+00033a 938a      	savetos
+00033b 2799      	clr		tosh		; 20131121 sam 應可更改
+00033c 2788      	clr		tosl		; 20131121 sam 應可更改
+                 ;	movw	tosl,zerol	; 20131121 sam 應可更改
+00033d 1f88      	rol		tosl
+00033e 940c 0055 	jmp INT_handler
+                 
+                 ;; System and user variables
+                 
+                 ;   doVAR	( -- a )
+                 ;	Run time routine for VARIABLE and CREATE.
+                 
+000340 0666
+000341 6445
+000342 566f
+000343 5241      	CODE	COMPO+5,"doVAR"
+                 DOVAR:
+000344 939a
+000345 938a      	savetos
+000346 91ff      	pop 	zh
+000347 91ef      	pop 	zl
+000348 0fee
+000349 1fff
+00034a 9185
+00034b 9195      	readflashcell tosl,tosh
+00034c 940c 0055 	jmp INT_handler
+                 
+                 ;   'BOOT	( -- a )
+                 ;	Storage of application address.
+                 
+00034e 0682
+00034f 2705
+000350 4f42
+000351 544f      	CODE	5,"'BOOT"
+                 TBOOT:
+000352 dff1      	RCALL	DOVAR
+000353 0100      	.DW		UPP
+                 
+                 ;   BASE	( -- a )
+                 ;	Storage of the radix base for numeric I/O.
+                 
+000354 069e
+000355 4204
+000356 5341
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1046): macro 'CODE' called here
+000357 0045      	CODE	4,"BASE"
+                 BASE:
+000358 dfeb      	RCALL	DOVAR
+000359 0104      	.DW		UPP+4
+                 
+                 ;   tmp	( -- a )
+                 ;	A temporary storage location used in parse and find.
+                 
+00035a 06aa
+00035b 5403
+00035c 504d      	CODE	3,"TMP"
+                 TEMP:
+00035d dfe6      	RCALL	DOVAR
+00035e 0106      	.DW		UPP+6
+                 
+                 ;   SPAN	( -- a )
+                 ;	Hold character count received by EXPECT.
+                 
+00035f 06b6
+000360 5304
+000361 4150
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1062): macro 'CODE' called here
+000362 004e      	CODE	4,"SPAN"
+                 SPAN:
+000363 dfe0      	RCALL	DOVAR
+000364 0108      	.DW		UPP+8
+                 
+                 ;   >IN	( -- a )
+                 ;	Hold the character pointer while parsing input stream.
+                 
+000365 06c0
+000366 3e03
+000367 4e49      	CODE	3,">IN"
+                 INN:
+000368 dfdb      	RCALL	DOVAR
+000369 010a      	.DW		UPP+10
+                 
+                 ;   #TIB	( -- a )
+                 ;	Hold the current count in and address of the terminal input buffer.
+                 
+00036a 06cc
+00036b 2304
+00036c 4954
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1078): macro 'CODE' called here
+00036d 0042      	CODE	4,"#TIB"
+                 NTIB:
+00036e dfd5      	RCALL	DOVAR
+00036f 010c      	.DW		UPP+12
+                 
+                 ;   'TIB	( -- a )
+                 ;	Hold the current count in and address of the terminal input buffer.
+                 
+000370 06d6
+000371 2704
+000372 4954
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1086): macro 'CODE' called here
+000373 0042      	CODE	4,"'TIB"
+                 TTIB:
+000374 dfcf      	RCALL	DOVAR
+000375 010e      	.DW		UPP+14
+                 
+                 ;   'EVAL	( -- a )
+                 ;	Execution vector of EVAL.
+                 
+000376 06e2
+000377 2705
+000378 5645
+000379 4c41      	CODE	5,"'EVAL"
+                 TEVAL:
+00037a dfc9      	RCALL	DOVAR
+00037b 0110      	.DW		UPP+16
+                 
+                 ;   HLD	( -- a )
+                 ;	Hold a pointer in building a numeric output string.
+                 
+00037c 06ee
+00037d 4803
+00037e 444c      	CODE	3,"HLD"
+                 HLD:
+00037f dfc4      	RCALL	DOVAR
+000380 0112      	.DW		UPP+18
+                 
+                 ;   CONTEXT	( -- a )
+                 ;	A area to specify vocabulary search order.
+                 
+000381 06fa
+000382 4307
+000383 4e4f
+000384 4554
+000385 5458      	CODE	7,"CONTEXT"
+                 CNTXT:
+000386 dfbd      	RCALL	DOVAR
+000387 0114      	.DW		UPP+20
+                 
+                 ;   CP	( -- a )
+                 ;	Point to the top of the code dictionary.
+                 
+000388 0704
+000389 4302
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1118): macro 'CODE' called here
+00038a 0050      	CODE	2,"CP"
+                 CPP:
+00038b dfb8      	RCALL	DOVAR
+00038c 0116      	.DW		UPP+22
+                 
+                 ;   DP	( -- a )
+                 ;	Point to the free RAM space.
+                 
+00038d 0712
+00038e 4402
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1126): macro 'CODE' called here
+00038f 0050      	CODE	2,"DP"
+                 DPP:
+000390 dfb3      	RCALL	DOVAR
+000391 0118      	.DW		UPP+24
+                 
+                 ;   LAST	( -- a )
+                 ;	Point to the last name in the name dictionary.
+                 
+000392 071c
+000393 4c04
+000394 5341
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1134): macro 'CODE' called here
+000395 0054      	CODE	4,"LAST"
+                 LAST:
+000396 dfad      	RCALL	DOVAR
+000397 011a      	.DW		UPP+26
+                 
+                 ;; Common functions
+                 
+                 ;   2*	( n -- n )
+                 ;	Multiply tos by cell size in bytes.
+                 
+000398 0726
+000399 3202
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1144): macro 'CODE' called here
+00039a 002a      	CODE	2,"2*"
+                 CELLS:
+00039b 0f88      	lsl		tosl
+00039c 1f99      	rol		tosh
+00039d 940c 0055 	jmp INT_handler
+                 
+                 ;   2/	( n -- n )
+                 ;	Divide tos by cell size in bytes.
+                 
+00039f 0732
+0003a0 3202
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1153): macro 'CODE' called here
+0003a1 002f      	CODE	2,"2/"
+                 TWOSL:
+0003a2 9595      	asr		tosh
+0003a3 9587      	ror		tosl
+0003a4 940c 0055 	jmp INT_handler
+                 
+                 ;   ALIGNED	( b -- a )
+                 ;	Align address to the cell boundary.
+                 
+0003a6 0740
+0003a7 4107
+0003a8 494c
+0003a9 4e47
+0003aa 4445      	CODE	7,"ALIGNED"
+                 ALGND:
+0003ab 9601      	adiw	tosl,1
+0003ac 7f8e      	andi	tosl,254
+0003ad 940c 0055 	jmp INT_handler
+                 
+                 ;   BL	( -- 32 )
+                 ;	Return 32, the blank character.
+                 
+0003af 074e
+0003b0 4202
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1171): macro 'CODE' called here
+0003b1 004c      	CODE	2,"BL"
+                 BLANK:
+0003b2 939a
+0003b3 938a      	savetos
+0003b4 e280      	ldi		tosl,32
+0003b5 2799      	clr		tosh
+0003b6 940c 0055 	jmp INT_handler
+                 
+                 ;   ?DUP	( w -- w w | 0 )
+                 ;	Dup tos if its is not zero.
+                 
+0003b8 0760
+0003b9 3f04
+0003ba 5544
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1181): macro 'CODE' called here
+0003bb 0050      	CODE	4,"?DUP"
+                 QDUP:
+0003bc 2f08          mov 	temp0, tosl
+0003bd 2b09          or 		temp0, tosh
+0003be f011          breq 	QDUP1
+0003bf 939a
+0003c0 938a          savetos
+                 QDUP1:
+0003c1 940c 0055 	jmp INT_handler
+                 
+                 ;   ROT	( w1 w2 w3 -- w2 w3 w1 )
+                 ;	Rot 3rd item to top.
+                 
+0003c3 0772
+0003c4 5203
+0003c5 544f      	CODE	3,"ROT"
+                 ROT:
+0003c6 018c          movw 	temp0, tosl
+0003c7 9129          ld 		temp2, Y+
+0003c8 9139          ld 		temp3, Y+ 
+0003c9 9189
+0003ca 9199          loadtos
+0003cb 933a          st 		-Y, temp3
+0003cc 932a          st 		-Y, temp2
+0003cd 931a          st 		-Y, temp1
+0003ce 930a          st 		-Y, temp0
+0003cf 940c 0055 	jmp INT_handler
+                 
+                 ;   2DROP	( w w -- )
+                 ;	Discard two items on stack.
+                 
+0003d1 0788
+0003d2 3205
+0003d3 5244
+0003d4 504f      	CODE	5,"2DROP"
+                 DDROP:
+0003d5 9189
+0003d6 9199      	loadtos
+0003d7 9189
+0003d8 9199      	loadtos
+0003d9 940c 0055 	jmp INT_handler
+                 
+                 ;   2DUP	( w1 w2 -- w1 w2 w1 w2 )
+                 ;	Duplicate top two items.
+                 
+0003db 07a4
+0003dc 3204
+0003dd 5544
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1217): macro 'CODE' called here
+0003de 0050      	CODE	4,"2DUP"
+                 DDUP:
+0003df df28      	RCALL	OVER
+0003e0 cf27      	RJMP	OVER
+                 
+                 ;   +	( w w -- sum )
+                 ;	Add top two items.
+                 
+0003e1 07b8
+0003e2 2b01      	CODE	1,"+"
+                 PLUS:
+0003e3 9109          ld 		temp0, Y+
+0003e4 9119          ld 		temp1, Y+
+0003e5 0f80          add 	tosl, temp0
+0003e6 1f91          adc 	tosh, temp1
+0003e7 940c 0055 	jmp INT_handler
+                 
+                 ;   NOT	( w -- w )
+                 ;	One's complement of tos.
+                 
+0003e9 07c4
+0003ea 4906
+0003eb 564e
+0003ec 5245
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1236): macro 'CODE' called here
+0003ed 0054      	CODE	6,"INVERT"
+                 INVER:
+0003ee 9580          com 	tosl
+0003ef 9590          com 	tosh
+0003f0 940c 0055 	jmp INT_handler
+                 
+                 ;   NEGATE	( n -- -n )
+                 ;	Two's complement of tos.
+                 
+0003f2 07d4
+0003f3 4e06
+0003f4 4745
+0003f5 5441
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1245): macro 'CODE' called here
+0003f6 0045      	CODE	6,"NEGATE"
+                 NEGAT:
+0003f7 dff6      	RCALL	INVER
+0003f8 9601      	adiw	tosl,1
+0003f9 940c 0055 	jmp INT_handler
+                 
+                 ;   DNEGATE	( d -- -d )
+                 ;	Two's complement of top double.
+                 
+0003fb 07e6
+0003fc 4407
+0003fd 454e
+0003fe 4147
+0003ff 4554      	CODE	7,"DNEGATE"
+                 DNEGA:
+000400 dfed      	RCALL	INVER
+000401 dece      	RCALL	TOR
+000402 dfeb      	RCALL	INVER
+000403 dd43      	RCALL	DOLIT
+000404 0001      	.DW	1
+000405 df2f      	RCALL	UPLUS
+000406 dead      	RCALL	RFROM
+000407 cfdb      	RJMP	PLUS
+                 
+                 ;   -	( n1 n2 -- n1-n2 )
+                 ;	Subtraction.
+                 
+000408 07f8
+000409 2d01      	CODE	1,"-"
+                 SUBB:
+00040a 9109          ld 		temp0, Y+
+00040b 9119          ld 		temp1, Y+
+00040c 1b08          sub 	temp0, tosl
+00040d 0b19          sbc 	temp1, tosh
+00040e 01c8          movw 	tosl, temp0
+00040f 940c 0055 	jmp INT_handler
+                 
+                 ;   ABS		( n -- n )
+                 ;	Return the absolute value of n.
+                 
+000411 0812
+000412 4103
+000413 5342      	CODE	3,"ABS"
+                 ABSS:
+000414 dee0      	RCALL	DUPP
+000415 defb      	RCALL	ZLESS
+000416 dd5c      	RCALL	QBRAN
+000417 0419      	.DW	ABS1
+000418 cfde      	RJMP	NEGAT
+                 ABS1:	
+000419 940c 0055 	jmp INT_handler
+                 
+                 ;   =	( w w -- t )
+                 ;	Return true if top two are equal.
+                 
+00041b 0824
+00041c 3d01      	CODE	1,"="
+                 EQUAL:
+00041d df0e      	RCALL	XORR
+00041e dd54      	RCALL	QBRAN
+00041f 0424      	.DW		EQU1
+000420 dd26      	RCALL	DOLIT
+000421 0000      	.DW		0
+000422 940c 0055 	jmp INT_handler
+                 EQU1:
+000424 dd22      	RCALL	DOLIT
+000425 ffff      	.DW		-1
+000426 940c 0055 	jmp INT_handler
+                 
+                 ;   U<	( u u -- t )
+                 ;	Unsigned compare of top two items.
+                 
+000428 0838
+000429 5502
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1309): macro 'CODE' called here
+00042a 003c      	CODE	2,"U<"
+                 ULESS:
+00042b dfb3      	RCALL	DDUP
+00042c deff      	RCALL	XORR
+00042d dee3      	RCALL	ZLESS
+00042e dd44      	RCALL	QBRAN
+00042f 0433      	.DW		ULES1
+000430 decc      	RCALL	SWAPP
+000431 debc      	RCALL	DROP
+000432 cede      	RJMP	ZLESS
+                 ULES1:
+000433 dfd6      	RCALL	SUBB
+000434 cedc      	RJMP	ZLESS
+                 
+                 ;   <	( n1 n2 -- t )
+                 ;	Signed compare of top two items.
+                 
+000435 0852
+000436 3c01      	CODE	1,"<"
+                 LESS:
+000437 dfa7      	RCALL	DDUP
+000438 def3      	RCALL	XORR
+000439 ded7      	RCALL	ZLESS
+00043a dd38      	RCALL	QBRAN
+00043b 043e      	.DW		LESS1
+00043c deb1      	RCALL	DROP
+00043d ced3      	RJMP	ZLESS
+                 LESS1:
+00043e dfcb      	RCALL	SUBB
+00043f ced1      	RJMP	ZLESS
+                 
+                 ;   MAX	( n n -- n )
+                 ;	Return the greater of two top stack items.
+                 
+000440 086c
+000441 4d03
+000442 5841      	CODE	3,"MAX"
+                 MAX:
+000443 df9b      	RCALL	DDUP
+000444 dff2      	RCALL	LESS
+000445 dd2d      	RCALL	QBRAN
+000446 0448      	.DW		MAX1
+000447 deb5      	RCALL	SWAPP
+                 MAX1:
+000448 cea5      	RJMP	DROP
+                 
+                 ;   MIN	( n n -- n )
+                 ;	Return the smaller of top two stack items.
+                 
+000449 0882
+00044a 4d03
+00044b 4e49      	CODE	3,"MIN"
+                 MIN:
+00044c df92      	RCALL	DDUP
+00044d deaf      	RCALL	SWAPP
+00044e dfe8      	RCALL	LESS
+00044f dd23      	RCALL	QBRAN
+000450 0452      	.DW		MIN1
+000451 deab      	RCALL	SWAPP
+                 MIN1:
+000452 ce9b      	RJMP	DROP
+                 
+                 ;   WITHIN	( u ul uh -- t )
+                 ;	Return true if u is within the range of ul and uh. ( ul <= u < uh )
+                 
+000453 0894
+000454 5706
+000455 5449
+000456 4948
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1369): macro 'CODE' called here
+000457 004e      	CODE	6,"WITHIN"
+                 WITHI:
+000458 deaf      	RCALL	OVER
+000459 dfb0      	RCALL	SUBB
+00045a de75      	RCALL	TOR
+00045b dfae      	RCALL	SUBB
+00045c de57      	RCALL	RFROM
+00045d cfcd      	RJMP	ULESS
+                 
+                 ;; Divide
+                 
+                 ;   UM/MOD	( udl udh un -- ur uq )
+                 ;	Unsigned divide of a double by a single. Return mod and quotient.
+                 
+00045e 08a8
+00045f 5506
+000460 2f4d
+000461 4f4d
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1383): macro 'CODE' called here
+000462 0044      	CODE	6,"UM/MOD"
+                 UMMOD:
+000463 017c          movw 	temp4, tosl
+000464 9129          ld 		temp2, Y+
+000465 9139          ld 		temp3, Y+
+000466 9109          ld 		temp0, Y+
+000467 9119          ld 		temp1, Y+
+                 ;; unsigned 32/16 -> 16r16 divide
+                   ; set 	loop counter
+000468 e140          ldi 	temp6,$10
+                 UMMOD1:
+                     ; shift left, saving high bit
+000469 2755          clr 	temp7
+00046a 0f00          lsl 	temp0
+00046b 1f11          rol 	temp1
+00046c 1f22          rol 	temp2
+00046d 1f33          rol 	temp3
+00046e 1f55          rol 	temp7
+                   ; try subtracting divisor
+00046f 152e          cp 		temp2, temp4
+000470 053f          cpc 	temp3, temp5
+000471 0552          cpc 	temp7,zerol
+000472 f018          brcs 	UMMOD3
+                 UMMOD2:
+                     ; dividend is large enough
+                     ; do the subtraction for real
+                     ; and set lowest bit
+000473 9503          inc 	temp0
+000474 192e          sub 	temp2, temp4
+000475 093f          sbc 	temp3, temp5
+                 UMMOD3:
+000476 954a          dec  	temp6
+000477 f789          brne 	UMMOD1
+                 UMMOD4:
+                     ; put remainder on stack
+000478 933a          st 		-Y,temp3
+000479 932a          st 		-Y,temp2
+                     ; put quotient on stack
+00047a 01c8          movw 	tosl, temp0
+00047b 940c 0055 	jmp INT_handler
+                 
+                 ;   M/MOD	( d n -- r q )
+                 ;	Signed floored divide of double by single. Return mod and quotient.
+                 
+00047d 08be
+00047e 4d05
+00047f 4d2f
+000480 444f      	CODE	5,"M/MOD"
+                 MSMOD:
+000481 de73      	RCALL	DUPP
+000482 de8e      	RCALL	ZLESS
+000483 de71      	RCALL	DUPP
+000484 de4b      	RCALL	TOR
+000485 dced      	RCALL	QBRAN
+000486 048b      	.DW	MMOD1
+000487 df6f      	RCALL	NEGAT
+000488 de47      	RCALL	TOR
+000489 df76      	RCALL	DNEGA
+00048a de29      	RCALL	RFROM
+                 MMOD1:	
+00048b de44      	RCALL	TOR
+00048c de68      	RCALL	DUPP
+00048d de83      	RCALL	ZLESS
+00048e dce4      	RCALL	QBRAN
+00048f 0492      	.DW	MMOD2
+000490 de30      	RCALL	RAT
+000491 df51      	RCALL	PLUS
+                 MMOD2:	
+000492 de21      	RCALL	RFROM
+000493 dfcf      	RCALL	UMMOD
+000494 de1f      	RCALL	RFROM
+000495 dcdd      	RCALL	QBRAN
+000496 049a      	.DW	MMOD3
+000497 de65      	RCALL	SWAPP
+000498 df5e      	RCALL	NEGAT
+000499 de63      	RCALL	SWAPP
+                 MMOD3:	
+00049a 940c 0055 	jmp INT_handler
+                 
+                 ;   /MOD	( n n -- r q )
+                 ;	Signed divide. Return mod and quotient.
+                 
+00049c 08fc
+00049d 2f04
+00049e 4f4d
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1462): macro 'CODE' called here
+00049f 0044      	CODE	4,"/MOD"
+                 SLMOD:
+0004a0 de67      	RCALL	OVER
+0004a1 de6f      	RCALL	ZLESS
+0004a2 de5a      	RCALL	SWAPP
+0004a3 cfdd      	RJMP	MSMOD
+                 
+                 ;   MOD	( n n -- r )
+                 ;	Signed divide. Return mod only.
+                 
+0004a4 093a
+0004a5 4d03
+0004a6 444f      	CODE	3,"MOD"
+                 MODD:
+0004a7 dff8      	RCALL	SLMOD
+0004a8 ce45      	RJMP	DROP
+                 
+                 
+                 ;   /	( n n -- q )
+                 ;	Signed divide. Return quotient only.
+                 
+0004a9 094a
+0004aa 2f01      	CODE	1,"/"
+                 SLASH:
+0004ab dff4      	RCALL	SLMOD
+0004ac de50      	RCALL	SWAPP
+0004ad ce40      	RJMP	DROP
+                 
+                 ;; Multiply
+                 
+                 ;   UM*	( u u -- ud )
+                 ;	Unsigned multiply. Return double product.
+                 
+0004ae 0954
+0004af 5503
+0004b0 2a4d      	CODE	3,"UM*"
+                 UMSTA:
+0004b1 018c          movw 	temp0, tosl
+0004b2 9189
+0004b3 9199          loadtos
+                     ; low bytes
+0004b4 9f80          mul 	tosl,temp0
+0004b5 01f0          movw 	zl, r0
+0004b6 2722          clr 	temp2
+0004b7 2733          clr 	temp3
+                     ; middle bytes
+0004b8 9f90          mul 	tosh, temp0
+0004b9 0df0          add 	zh, r0
+0004ba 1d21          adc 	temp2, r1
+0004bb 1d33          adc 	temp3, zeroh
+0004bc 9f81      	mul 	tosl, temp1
+0004bd 0df0      	add 	zh, r0
+0004be 1d21      	adc 	temp2, r1
+0004bf 1d33      	adc 	temp3, zeroh
+0004c0 9f91      	mul 	tosh, temp1
+0004c1 0d20      	add 	temp2, r0
+0004c2 1d31      	adc 	temp3, r1
+0004c3 01cf      	movw 	tosl, zl
+0004c4 939a
+0004c5 938a      	savetos
+0004c6 01c9      	movw 	tosl, temp2
+0004c7 940c 0055 	jmp INT_handler
+                 
+                 ;   *	( n n -- n )
+                 ;	Signed multiply. Return single product.
+                 
+0004c9 095e
+0004ca 2a01      	CODE	1,"*"
+                 STAR:
+0004cb d004      	RCALL	MSTAR
+0004cc ce21      	RJMP	DROP
+                 
+                 ;   M*		( n n -- d )
+                 ;	Signed multiply. Return double product.
+                 
+0004cd 0994
+0004ce 4d02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1529): macro 'CODE' called here
+0004cf 002a      	CODE	2,"M*"
+                 MSTAR:
+0004d0 df0e      	RCALL	DDUP
+0004d1 de5a      	RCALL	XORR
+0004d2 de3e      	RCALL	ZLESS
+0004d3 ddfc      	RCALL	TOR
+0004d4 df3f      	RCALL	ABSS
+0004d5 de27      	RCALL	SWAPP
+0004d6 df3d      	RCALL	ABSS
+0004d7 dfd9      	RCALL	UMSTA
+0004d8 dddb      	RCALL	RFROM
+0004d9 dc99      	RCALL	QBRAN
+0004da 04dc      	.DW	MSTA1
+0004db df24      	RCALL	DNEGA
+                 MSTA1:	
+0004dc 940c 0055 	jmp INT_handler
+                 
+                 ;   */MOD	( n1 n2 n3 -- r q )
+                 ;	Multiply n1 and n2, then divide by n3. Return mod and quotient.
+                 
+0004de 099c
+0004df 2a05
+0004e0 4d2f
+0004e1 444f      	CODE	5,"*/MOD"
+                 SSMOD:
+0004e2 dded      	RCALL	TOR
+0004e3 dfec      	RCALL	MSTAR
+0004e4 ddcf      	RCALL	RFROM
+0004e5 cf9b      	RJMP	MSMOD
+                 
+                 ;   */	( n1 n2 n3 -- q )
+                 ;	Multiply n1 by n2, then divide by n3. Return quotient only.
+                 
+0004e6 09be
+0004e7 2a02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1559): macro 'CODE' called here
+0004e8 002f      	CODE	2,"*/"
+                 STASL:
+0004e9 dff8      	RCALL	SSMOD
+0004ea de12      	RCALL	SWAPP
+0004eb ce02      	RJMP	DROP
+                 
+                 ;; Miscellaneous
+                 
+                 ;   >CHAR	( c -- c )
+                 ;	Filter non-printing characters.
+                 
+0004ec 09ce
+0004ed 3e05
+0004ee 4843
+0004ef 5241      	CODE	5,">CHAR"
+                 TCHAR:
+0004f0 940c 0055     jmp INT_handler           ;  No filter ;albert  2012/5/2
+0004f2 de02      	RCALL	DUPP
+0004f3 debe      	RCALL	BLANK
+0004f4 dc52      	RCALL	DOLIT
+0004f5 007f      	.DW		$7F
+0004f6 df61      	RCALL	WITHI
+0004f7 dc7b      	RCALL	QBRAN
+0004f8 04fb      	.DW		TCHAR1
+0004f9 940c 0055 	jmp INT_handler
+                 TCHAR1:	
+0004fb ddf2      	RCALL	DROP
+0004fc dc4a      	RCALL	DOLIT
+0004fd 005f      	.DW		'_'
+0004fe 940c 0055 	jmp INT_handler
+                 
+                 
+                 ;   DEPTH	( -- n )
+                 ;	Return the depth of the data stack.
+                 
+000500 09da
+000501 4405
+000502 5045
+000503 4854      	CODE	5,"DEPTH"
+                 DEPTH:
+000504 ddd8      	RCALL	SPAT
+000505 dc41      	RCALL	DOLIT
+000506 06ee      	.DW		SPP-2
+000507 ddf5      	RCALL	SWAPP
+000508 df01      	RCALL	SUBB
+000509 ce98      	RJMP	TWOSL
+                 
+                 ;   PICK	( ... +n -- ... w )
+                 ;	Copy the nth stack item to tos.
+                 
+00050a 0a02
+00050b 5004
+00050c 4349
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1603): macro 'CODE' called here
+00050d 004b      	CODE	4,"PICK"
+                 PICK:
+00050e 9601      	ADIW	TOSL,1
+00050f de8b      	RCALL	CELLS
+000510 ddcc      	RCALL	SPAT
+000511 ded1      	RCALL	PLUS
+000512 cc9c      	RJMP	AT
+                 
+                 ;; Memory access
+                 
+                 ;   +!	( n a -- )
+                 ;	Add n to the contents at address a.
+                 
+000513 0a16
+000514 2b02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1616): macro 'CODE' called here
+000515 0021      	CODE	2,"+!"
+                 PSTOR:
+000516 dde6      	RCALL	SWAPP
+000517 ddf0      	RCALL	OVER
+000518 dc96      	RCALL	AT
+000519 dec9      	RCALL	PLUS
+00051a dde2      	RCALL	SWAPP
+00051b cc88      	RJMP	STORE
+                 
+                 ;   COUNT	( b -- b +n )
+                 ;	Return count byte of a string and add 1 to byte address.
+                 
+00051c 0a28
+00051d 4305
+00051e 554f
+00051f 544e      	CODE	5,"COUNT"
+                 COUNT:
+000520 01fc      	movw	zl, tosl
+000521 9101      	ld		temp0, z+
+000522 01cf      	movw	tosl, zl
+000523 939a
+000524 938a      	savetos
+000525 2f80      	mov		tosl, temp0
+000526 2799      	clr		tosh
+000527 940c 0055 	jmp INT_handler
+                 
+                 ;   ICOUNT	( b -- b +n )
+                 ;	Return count byte of a string and add 1 to byte address.
+                 
+000529 0a3a
+00052a 4906
+00052b 4f43
+00052c 4e55
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1641): macro 'CODE' called here
+00052d 0054      	CODE	6,"ICOUNT"
+                 ICOUNT:
+00052e ddc6      	RCALL	DUPP
+00052f 9601      	adiw	tosl,1
+000530 ddcc      	RCALL	SWAPP
+000531 cc9e      	RJMP	ICAT
+                 
+                 ;   HERE	( -- a )
+                 ;	Return the top of the code dictionary.
+                 
+000532 0a54
+000533 4804
+000534 5245
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1651): macro 'CODE' called here
+000535 0045      	CODE	4,"HERE"
+                 HEREE:
+000536 de59      	RCALL	DPP
+000537 cc77      	RJMP	AT
+                 
+                 ;   PAD	( -- a )
+                 ;	Return the address of the text buffer above the code dictionary.
+                 
+000538 0a66
+000539 5003
+00053a 4441      	CODE	3,"PAD"
+                 PAD:
+00053b dffa      	RCALL	HEREE
+00053c dc0a      	RCALL	DOLIT
+00053d 0040      	.DW		$40
+00053e cea4      	RJMP	PLUS
+                 
+                 ;   TIB	( -- a )
+                 ;	Return the address of the terminal input buffer.
+                 
+00053f 0a72
+000540 5403
+000541 4249      	CODE	3,"TIB"
+                 TIB:
+000542 de2b      	RCALL	NTIB
+000543 9602      	ADIW	TOSL,2
+000544 cc6a      	RJMP	AT
+                 
+                 ;   @EXECUTE	( a -- )
+                 ;	Execute vector stored in address a.
+                 
+000545 0a80
+000546 4008
+000547 5845
+000548 4345
+000549 5455
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1678): macro 'CODE' called here
+00054a 0045      	CODE	8,"@EXECUTE"
+                 ATEXE:
+00054b dc63      	RCALL	AT
+00054c de6f      	RCALL	QDUP	;?address or zero
+00054d dc25      	RCALL	QBRAN
+00054e 0550      	.DW		EXE1
+00054f dc42      	RCALL	EXECU	;execute if non-zero
+                 EXE1:
+000550 940c 0055 	jmp INT_handler				;do nothing if zero
+                 
+                 ;   CMOVE	( b1 b2 u -- )
+                 ;	Copy u bytes from b1 to b2.
+                 
+000552 0a8c
+000553 4305
+000554 4f4d
+000555 4556      	CODE	5,"CMOVE"
+                 CMOVE:
+000556 dd79      	RCALL	TOR
+000557 c006      	RJMP	CMOV2
+                 CMOV1:
+000558 dd77      	RCALL	TOR
+000559 dfc6      	RCALL	COUNT
+00055a dd66      	RCALL	RAT
+00055b dd45      	RCALL	CSTOR
+00055c dd57      	RCALL	RFROM
+00055d 9601      	ADIW	TOSL,1
+                 CMOV2:
+00055e dbfa      	RCALL	DONXT
+00055f 0558      	.DW		CMOV1
+000560 ce74      	RJMP	DDROP
+                 
+                 ;	UPPER	( c -- c' )
+                 ;	Change character to upper case
+                 
+000561 0aa6
+000562 5505
+000563 5050
+000564 5245      	CODE	5,"UPPER"
+                 UPPER:
+000565 940c 0055    jmp INT_handler      ; NO capitalize ; albert  2012/5/2 
+000567 dd8d      	RCALL	DUPP
+000568 dbde      	RCALL	DOLIT
+000569 0061      	.DW		$61
+00056a dbdc      	RCALL	DOLIT
+00056b 007b      	.DW		$7B
+00056c deeb      	RCALL	WITHI
+00056d dc05      	RCALL	QBRAN
+00056e 0572      	.DW		UPPER1
+00056f dbd7      	RCALL	DOLIT
+000570 005f      	.DW		$5F
+000571 dda8      	RCALL	ANDD
+                 UPPER1:
+000572 940c 0055 	jmp INT_handler
+                 
+                 ;   UMOVE	( a b u -- )
+                 ;	Copy u bytes from b1 to b2, changing to upper case.
+                 
+000574 0ac4
+000575 5505
+000576 4f4d
+000577 4556      	CODE	5,"UMOVE"
+                 UMOVE:
+000578 dd57      	RCALL	TOR
+000579 c007      	RJMP	UMOV2
+                 UMOV1:
+00057a dd55      	RCALL	TOR
+00057b dfa4      	RCALL	COUNT
+00057c dfe8      	RCALL	UPPER
+00057d dd43      	RCALL	RAT
+00057e dd22      	RCALL	CSTOR
+00057f dd34      	RCALL	RFROM
+000580 9601      	ADIW	TOSL,1
+                 UMOV2:
+000581 dbd7      	RCALL	DONXT
+000582 057a      	.DW		UMOV1
+000583 ce51      	RJMP	DDROP
+                 
+                 ;   FILL	( b u c -- )
+                 ;	Fill u bytes of character c to area beginning at b.
+                 
+000584 0aea
+000585 4604
+000586 4c49
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1750): macro 'CODE' called here
+000587 004c      	CODE	4,"FILL"
+                 FILL:
+000588 dd74      	RCALL	SWAPP
+000589 dd46      	RCALL	TOR
+00058a dd72      	RCALL	SWAPP
+00058b c003      	RJMP	FILL2
+                 FILL1:
+00058c de52      	RCALL	DDUP
+00058d dd13      	RCALL	CSTOR
+00058e 9601      	ADIW	TOSL,1
+                 FILL2:
+00058f dbc9      	RCALL	DONXT
+000590 058c      	.DW		FILL1
+000591 ce43      	RJMP	DDROP
+                 
+                 ;; Numeric output, single precision
+                 
+                 ;   DIGIT	( u -- c )
+                 ;	Convert digit u to a character.
+                 
+000592 0b0a
+000593 4405
+000594 4749
+000595 5449      	CODE	5,"DIGIT"
+                 DIGIT:
+000596 dbb0      	RCALL	DOLIT
+000597 0009      	.DW		9
+000598 dd6f      	RCALL	OVER
+000599 de9d      	RCALL	LESS
+00059a dbac      	RCALL	DOLIT
+00059b 0007      	.DW		7
+00059c dd7d      	RCALL	ANDD
+00059d de45      	RCALL	PLUS
+00059e dba8      	RCALL	DOLIT
+00059f 0030      	.DW		'0'
+0005a0 ce42      	RJMP	PLUS
+                 
+                 ;   EXTRACT	( n base -- n c )
+                 ;	Extract the least significant digit from n.
+                 
+0005a1 0b26
+0005a2 4507
+0005a3 5458
+0005a4 4152
+0005a5 5443      	CODE	7,"EXTRACT"
+                 EXTRC:
+0005a6 dba0      	RCALL	DOLIT
+0005a7 0000      	.DW		0
+0005a8 dd54      	RCALL	SWAPP
+0005a9 deb9      	RCALL	UMMOD
+0005aa dd52      	RCALL	SWAPP
+0005ab cfea      	RJMP	DIGIT
+                 
+                 ;   <#	( -- )
+                 ;	Initiate the numeric output process.
+                 
+0005ac 0b44
+0005ad 3c02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1799): macro 'CODE' called here
+0005ae 0023      	CODE	2,"<#"
+                 BDIGS:
+0005af df8b      	RCALL	PAD
+0005b0 ddce      	RCALL	HLD
+0005b1 cbf2      	RJMP	STORE
+                 
+                 ;   HOLD	( c -- )
+                 ;	Insert a character into the numeric output string.
+                 
+0005b2 0b5a
+0005b3 4804
+0005b4 4c4f
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1808): macro 'CODE' called here
+0005b5 0044      	CODE	4,"HOLD"
+                 HOLD:
+0005b6 ddc8      	RCALL	HLD
+0005b7 dbf7      	RCALL	AT
+0005b8 9701      	SBIW	TOSL,1
+0005b9 dd3b      	RCALL	DUPP
+0005ba ddc4      	RCALL	HLD
+0005bb dbe8      	RCALL	STORE
+0005bc cce4      	RJMP	CSTOR
+                 
+                 ;   #	( u -- u )
+                 ;	Extract one digit from u and append the digit to output string.
+                 
+0005bd 0b66
+0005be 2301      	CODE	1,"#"
+                 DIG:
+0005bf dd98      	RCALL	BASE
+0005c0 dbee      	RCALL	AT
+0005c1 dfe4      	RCALL	EXTRC
+0005c2 cff3      	RJMP	HOLD
+                 
+                 ;   #S	( u -- 0 )
+                 ;	Convert u until all digits are added to the output string.
+                 
+0005c3 0b7c
+0005c4 2302
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1831): macro 'CODE' called here
+0005c5 0053      	CODE	2,"#S"
+                 DIGS:
+                 DIGS1:
+0005c6 dff8      	RCALL	DIG
+0005c7 dd2d      	RCALL	DUPP
+0005c8 dbaa      	RCALL	QBRAN
+0005c9 05cb      	.DW		DIGS2
+0005ca cffb      	RJMP	DIGS1
+                 DIGS2:
+0005cb 940c 0055 	jmp INT_handler
+                 
+                 ;   SIGN	( n -- )
+                 ;	Add a minus sign to the numeric output string.
+                 
+0005cd 0b88
+0005ce 5304
+0005cf 4749
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1845): macro 'CODE' called here
+0005d0 004e      	CODE	4,"SIGN"
+                 SIGN:
+0005d1 dd3f      	RCALL	ZLESS
+0005d2 dba0      	RCALL	QBRAN
+0005d3 05d7      	.DW		SIGN1
+0005d4 db72      	RCALL	DOLIT
+0005d5 002d      	.DW		'-'
+0005d6 dfdf      	RCALL	HOLD
+0005d7 940c 0055 SIGN1:	jmp INT_handler
+                 
+                 ;   #>	( w -- b u )
+                 ;	Prepare the output string to be TYPE'd.
+                 
+0005d9 0b9c
+0005da 2302
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1858): macro 'CODE' called here
+0005db 003e      	CODE	2,"#>"
+                 EDIGS:
+0005dc dd11      	RCALL	DROP
+0005dd dda1      	RCALL	HLD
+0005de dbd0      	RCALL	AT
+0005df df5b      	RCALL	PAD
+0005e0 dd27      	RCALL	OVER
+0005e1 ce28      	RJMP	SUBB
+                 
+                 ;   str		( w -- b u )
+                 ;	Convert a signed integer to a numeric string.
+                 
+0005e2 0bb4
+0005e3 7303
+0005e4 7274      	CODE	3,"str"
+                 STR:
+0005e5 dd0f      	RCALL	DUPP
+0005e6 dce9      	RCALL	TOR
+0005e7 de2c      	RCALL	ABSS
+0005e8 dfc6      	RCALL	BDIGS
+0005e9 dfdc      	RCALL	DIGS
+0005ea dcc9      	RCALL	RFROM
+0005eb dfe5      	RCALL	SIGN
+0005ec cfef      	RJMP	EDIGS
+                 
+                 ;   HEX		( -- )
+                 ;	Use radix 16 as base for numeric conversions.
+                 
+0005ed 0bc6
+0005ee 4803
+0005ef 5845      	CODE	3,"HEX"
+                 HEX:
+0005f0 db56      	RCALL	DOLIT
+0005f1 0010      	.DW	16
+0005f2 dd65      	RCALL	BASE
+0005f3 cbb0      	RJMP	STORE
+                 
+                 ;   DECIMAL	( -- )
+                 ;	Use radix 10 as base for numeric conversions.
+                 
+0005f4 0bdc
+0005f5 4407
+0005f6 4345
+0005f7 4d49
+0005f8 4c41      	CODE	7,"DECIMAL"
+                 DECIM:
+0005f9 db4d      	RCALL	DOLIT
+0005fa 000a      	.DW	10
+0005fb dd5c      	RCALL	BASE
+0005fc cba7      	RJMP	STORE
+                 
+                 ;; Numeric input, single precision
+                 
+                 ;   DIGIT?	( c base -- u t )
+                 ;	Convert a character to its numeric value. A flag indicates success.
+                 
+0005fd 0bea
+0005fe 4406
+0005ff 4749
+000600 5449
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(1906): macro 'CODE' called here
+000601 003f      	CODE	6,"DIGIT?"
+                 DIGTQ:
+000602 dccd      	RCALL	TOR
+000603 db43      	RCALL	DOLIT
+000604 0030      	.DW		'0'
+000605 de04      	RCALL	SUBB
+000606 db40      	RCALL	DOLIT
+000607 0009      	.DW		9
+000608 dcff      	RCALL	OVER
+000609 de2d      	RCALL	LESS
+00060a db68      	RCALL	QBRAN
+00060b 0614      	.DW		DGTQ1
+00060c db3a      	RCALL	DOLIT
+00060d 0007      	.DW		7
+00060e ddfb      	RCALL	SUBB
+00060f dce5      	RCALL	DUPP
+000610 db36      	RCALL	DOLIT
+000611 000a      	.DW		10
+000612 de24      	RCALL	LESS
+000613 dd0f      	RCALL	ORR
+                 DGTQ1:
+000614 dce0      	RCALL	DUPP
+000615 dc9e      	RCALL	RFROM
+000616 ce14      	RJMP	ULESS
+                 
+                 ;   NUMBER?	( a -- n T | a F )
+                 ;	Convert a number string to integer. Push a flag on tos.
+                 
+000617 0bfc
+000618 4e07
+000619 4d55
+00061a 4542
+00061b 3f52      	CODE	7,"NUMBER?"
+                 NUMBQ:
+00061c dd3b      	RCALL	BASE
+00061d db91      	RCALL	AT
+00061e dcb1      	RCALL	TOR
+00061f db27      	RCALL	DOLIT
+000620 0000      	.DW		0
+000621 dce6      	RCALL	OVER
+000622 defd      	RCALL	COUNT
+000623 dce4      	RCALL	OVER
+000624 dc87      	RCALL	CAT
+000625 db21      	RCALL	DOLIT
+000626 0024      	.DW		'$'
+000627 ddf5      	RCALL	EQUAL
+000628 db4a      	RCALL	QBRAN
+000629 062f      	.DW		NUMQ1
+00062a dfc5      	RCALL	HEX
+00062b dcd1      	RCALL	SWAPP
+00062c 9601      	adiw	tosl,1
+00062d dccf      	RCALL	SWAPP
+00062e 9701      	sbiw	tosl,1
+                 NUMQ1:
+00062f dcd8      	RCALL	OVER
+000630 dc7b      	RCALL	CAT
+000631 db15      	RCALL	DOLIT
+000632 002d      	.DW		'-'
+000633 dde9      	RCALL	EQUAL
+000634 dc9b      	RCALL	TOR
+000635 dcc7      	RCALL	SWAPP
+000636 dc8a      	RCALL	RAT
+000637 ddd2      	RCALL	SUBB
+000638 dcc4      	RCALL	SWAPP
+000639 dc87      	RCALL	RAT
+00063a dda8      	RCALL	PLUS
+00063b dd80      	RCALL	QDUP
+00063c db36      	RCALL	QBRAN
+00063d 065f      	.DW		NUMQ6
+00063e 9701      	sbiw	tosl,1
+00063f dc90      	RCALL	TOR
+                 NUMQ2:
+000640 dcb4      	RCALL	DUPP
+000641 dc8e      	RCALL	TOR
+000642 dc69      	RCALL	CAT
+000643 dd14      	RCALL	BASE
+000644 db6a      	RCALL	AT
+000645 dfbc      	RCALL	DIGTQ
+000646 db2c      	RCALL	QBRAN
+000647 0658      	.DW		NUMQ4
+000648 dcb4      	RCALL	SWAPP
+000649 dd0e      	RCALL	BASE
+00064a db64      	RCALL	AT
+00064b de7f      	RCALL	STAR
+00064c dd96      	RCALL	PLUS
+00064d dc66      	RCALL	RFROM
+00064e 9601      	adiw	tosl,1
+00064f db09      	RCALL	DONXT
+000650 0640      	.DW		NUMQ2
+000651 dc9c      	RCALL	DROP
+000652 dc6e      	RCALL	RAT
+000653 db1f      	RCALL	QBRAN
+000654 0656      	.DW		NUMQ3
+000655 dda1      	RCALL	NEGAT
+                 NUMQ3:
+000656 dca6      	RCALL	SWAPP
+000657 c006      	RJMP	NUMQ5
+                 NUMQ4:
+000658 dc5b      	RCALL	RFROM
+000659 dc5a      	RCALL	RFROM
+00065a dd7a      	RCALL	DDROP
+00065b dd79      	RCALL	DDROP
+00065c daea      	RCALL	DOLIT
+00065d 0000      	.DW		0
+                 NUMQ5:
+00065e dc96      	RCALL	DUPP
+                 NUMQ6:
+00065f dc54      	RCALL	RFROM
+000660 dd74      	RCALL	DDROP
+000661 dc52      	RCALL	RFROM
+000662 dcf5      	RCALL	BASE
+000663 cb40      	RJMP	STORE
+                 
+                 ;; Basic I/O
+                 
+                 ;   KEY	( -- c )
+                 ;	Wait for and return an input character.
+                 
+000664 0c30
+000665 4b03
+000666 5945      	CODE	3,"KEY"
+                 KEY:
+                 KEY1:
+000667 daaa      	RCALL	QRX
+000668 db0a      	RCALL	QBRAN
+000669 0667      	.DW		KEY1
+00066a 940c 0055 	jmp INT_handler
+                 
+                 ;   SPACE	( -- )
+                 ;	Send the blank character to the output device.
+                 
+00066c 0cca
+00066d 5305
+00066e 4150
+00066f 4543      	CODE	5,"SPACE"
+                 SPACE:
+000670 dd41      	RCALL	BLANK
+000671 cab6      	RJMP	EMIT
+                 
+                 ;   CHARS	( +n c -- )
+                 ;	Send n characters to the output device.
+                 
+000672 0cda
+000673 4305
+000674 4148
+000675 5352      	CODE	5,"CHARS"
+                 CHARS:
+000676 dc86      	RCALL	SWAPP
+000677 dc58      	RCALL	TOR
+000678 c002      	RJMP	CHAR2
+                 CHAR1:
+000679 dc7b      	RCALL	DUPP
+00067a daad      	RCALL	EMIT
+                 CHAR2:
+00067b dadd      	RCALL	DONXT
+00067c 0679      	.DW		CHAR1
+00067d cc70      	RJMP	DROP
+                 
+                 ;   SPACES	( +n -- )
+                 ;	Send n spaces to the output device.
+                 
+00067e 0ce6
+00067f 5306
+000680 4150
+000681 4543
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2055): macro 'CODE' called here
+000682 0053      	CODE	6,"SPACES"
+                 SPACS:
+000683 dd2e      	RCALL	BLANK
+000684 cff1      	RJMP	CHARS
+                 
+                 ;   TYPE	( b u -- )
+                 ;	Output u characters from b.
+                 
+000685 0cfe
+000686 5404
+000687 5059
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2063): macro 'CODE' called here
+000688 0045      	CODE	4,"TYPE"
+                 TYPES:
+000689 dc46      	RCALL	TOR
+00068a c003      	RJMP	TYPE2
+                 TYPE1:
+00068b de94      	RCALL	COUNT
+00068c de63      	RCALL	TCHAR
+00068d da9a      	RCALL	EMIT
+                 TYPE2:
+00068e daca      	RCALL	DONXT
+00068f 068b      	.DW		TYPE1
+000690 cc5d      	RJMP	DROP
+                 
+                 ;   ITYPE	( b u -- )
+                 ;	Output u characters from b.
+                 
+000691 0d0c
+000692 4905
+000693 5954
+000694 4550      	CODE	5,"ITYPE"
+                 ITYPES:
+000695 dc3a      	RCALL	TOR
+000696 c003      	RJMP	ITYPE2
+                 ITYPE1:
+000697 de96      	RCALL	ICOUNT
+000698 de57      	RCALL	TCHAR
+000699 da8e      	RCALL	EMIT
+                 ITYPE2:
+00069a dabe      	RCALL	DONXT
+00069b 0697      	.DW		ITYPE1
+00069c cc51      	RJMP	DROP
+                 
+                 ;   CR	( -- )
+                 ;	Output a carriage return and a line feed.
+                 
+00069d 0d24
+00069e 4302
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2095): macro 'CODE' called here
+00069f 0052      	CODE	2,"CR"
+                 CR:
+0006a0 daa6      	RCALL	DOLIT
+0006a1 000d      	.DW		CRR
+0006a2 da85      	RCALL	EMIT
+0006a3 daa3      	RCALL	DOLIT
+0006a4 000a      	.DW		LF
+0006a5 ca82      	RJMP	EMIT
+                 
+                 ;   do$	( -- a )
+                 ;	Return the address of a compiled string.
+                 
+0006a6 0d3c
+0006a7 6443
+0006a8 246f      	CODE	COMPO+3,"do$"
+                 DOSTR:
+0006a9 dc0a      	RCALL	RFROM	;ra
+0006aa dc09      	RCALL	RFROM	;ra a
+0006ab dc49      	RCALL	DUPP	;ra a a
+0006ac dc48      	RCALL	DUPP	;ra a a a
+0006ad 01fc      	movw	zl,tosl
+0006ae 0fee
+0006af 1fff
+0006b0 9185
+0006b1 9195      	readflashcell	tosl,tosh
+0006b2 2799      	clr		tosh	;ra a a count
+0006b3 dcee      	RCALL	TWOSL
+0006b4 dd2e      	RCALL	PLUS
+0006b5 9601      	ADIW	TOSL,1	;ra a a' 
+0006b6 dc19      	RCALL	TOR	;ra a
+0006b7 dc45      	RCALL	SWAPP	;a ra
+0006b8 dc17      	RCALL	TOR	;a
+0006b9 dce1      	RCALL	CELLS	;byte address
+0006ba 940c 0055 	jmp INT_handler
+                 
+                 ;   $"|	( -- a )
+                 ;	Run time routine compiled by $". Return address of a compiled string.
+                 
+0006bc 0d4e
+0006bd 2443      	CODE	COMPO+3,'$'
+0006be 7c22      	.DB		'"','|'
+                 STRQP:
+0006bf dfe9      	RCALL	DOSTR
+0006c0 940c 0055 	jmp INT_handler				;force a call to do$
+                 
+                 ;   ."|	( -- )
+                 ;	Run time routine of ." . Output a compiled string.
+                 
+0006c2 0d7a
+0006c3 2e43      	CODE	COMPO+3,'.'
+0006c4 7c22      	.DB		'"','|'
+                 DOTQP:
+0006c5 dfe3      	RCALL	DOSTR
+0006c6 de67      	RCALL	ICOUNT
+0006c7 cfcd      	RJMP	ITYPES
+                 
+                 ;   .R		( n +n -- )
+                 ;	Display an integer in a field of n columns, right justified.
+                 
+0006c8 0d86
+0006c9 2e02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2147): macro 'CODE' called here
+0006ca 0052      	CODE	2,".R"
+                 DOTR:
+0006cb dc04      	RCALL	TOR
+0006cc df18      	RCALL	STR
+0006cd dbe6      	RCALL	RFROM
+0006ce dc39      	RCALL	OVER
+0006cf dd3a      	RCALL	SUBB
+0006d0 dfb2      	RCALL	SPACS
+0006d1 cfb7      	RJMP	TYPES
+                 
+                 ;   U.R	( u +n -- )
+                 ;	Display an unsigned integer in n column, right justified.
+                 
+0006d2 0d92
+0006d3 5503
+0006d4 522e      	CODE	3,"U.R"
+                 UDOTR:
+0006d5 dbfa      	RCALL	TOR
+0006d6 ded8      	RCALL	BDIGS
+0006d7 deee      	RCALL	DIGS
+0006d8 df03      	RCALL	EDIGS
+0006d9 dbda      	RCALL	RFROM
+0006da dc2d      	RCALL	OVER
+0006db dd2e      	RCALL	SUBB
+0006dc dfa6      	RCALL	SPACS
+0006dd cfab      	RJMP	TYPES
+                 
+                 ;   U.	( u -- )
+                 ;	Display an unsigned integer in free format.
+                 
+0006de 0da6
+0006df 5502
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2175): macro 'CODE' called here
+0006e0 002e      	CODE	2,"U."
+                 UDOT:
+0006e1 decd      	RCALL	BDIGS
+0006e2 dee3      	RCALL	DIGS
+0006e3 def8      	RCALL	EDIGS
+0006e4 df8b      	RCALL	SPACE
+0006e5 cfa3      	RJMP	TYPES
+                 
+                 ;   .		( w -- )
+                 ;	Display an integer in free format, preceeded by a space.
+                 
+0006e6 0dbe
+0006e7 2e01      	CODE	1,"."
+                 DOT:
+0006e8 dc6f      	RCALL	BASE
+0006e9 dac5      	RCALL	AT
+0006ea da5c      	RCALL	DOLIT
+0006eb 000a      	.DW	10
+0006ec dc3f      	RCALL	XORR	;?decimal
+0006ed da85      	RCALL	QBRAN
+0006ee 06f0      	.DW	DOT1
+0006ef cff1      	RJMP	UDOT
+                 DOT1:	
+0006f0 def4      	RCALL	STR
+0006f1 df7e      	RCALL	SPACE
+0006f2 cf96      	RJMP	TYPES
+                 
+                 ;   ?	( a -- )
+                 ;	Display the contents in a memory cell.
+                 
+0006f3 0dce
+0006f4 3f01      	CODE	1,"?"
+                 QUEST:
+0006f5 dab9      	RCALL	AT
+0006f6 cff1      	RJMP	DOT
+                 
+                 ;; Parsing
+                 
+                 ;   parse	( b u c -- b u delta ; <string> )
+                 ;	Scan string delimited by c. Return found string and its offset.
+                 
+0006f7 0de8
+0006f8 7005
+0006f9 7261
+0006fa 6573      	CODE	5,"parse"
+                 PARS:
+0006fb dc61      	RCALL	TEMP
+0006fc daa7      	RCALL	STORE
+0006fd dc0a      	RCALL	OVER
+0006fe dbd1      	RCALL	TOR
+0006ff dbf5      	RCALL	DUPP
+000700 da72      	RCALL	QBRAN
+000701 073e      	.DW		PARS8
+000702 9701      	SBIW	TOSL,1
+000703 dc59      	RCALL	TEMP
+000704 dba7      	RCALL	CAT
+000705 dcac      	RCALL	BLANK
+000706 dd16      	RCALL	EQUAL
+000707 da6b      	RCALL	QBRAN
+000708 071d      	.DW		PARS3
+000709 dbc6      	RCALL	TOR
+                 PARS1:
+00070a dca7      	RCALL	BLANK
+00070b dbfc      	RCALL	OVER
+00070c db9f      	RCALL	CAT	;skip leading blanks ONLY
+00070d dcfc      	RCALL	SUBB
+00070e dc02      	RCALL	ZLESS
+00070f dcde      	RCALL	INVER
+000710 da62      	RCALL	QBRAN
+000711 071c      	.DW		PARS2
+000712 9601      	ADIW	TOSL,1
+000713 da45      	RCALL	DONXT
+000714 070a      	.DW		PARS1
+000715 db9e      	RCALL	RFROM
+000716 dbd7      	RCALL	DROP
+000717 da2f      	RCALL	DOLIT
+000718 0000      	.DW		0
+000719 dbdb      	RCALL	DUPP
+00071a 940c 0055 	jmp INT_handler
+                 PARS2:
+00071c db97      	RCALL	RFROM
+                 PARS3:
+00071d dbea      	RCALL	OVER
+00071e dbde      	RCALL	SWAPP
+00071f dbb0      	RCALL	TOR
+                 PARS4:
+000720 dc3c      	RCALL	TEMP
+000721 db8a      	RCALL	CAT
+000722 dbe5      	RCALL	OVER
+000723 db88      	RCALL	CAT
+000724 dce5      	RCALL	SUBB	;scan for delimiter
+000725 dc37      	RCALL	TEMP
+000726 db85      	RCALL	CAT
+000727 dc8a      	RCALL	BLANK
+000728 dcf4      	RCALL	EQUAL
+000729 da49      	RCALL	QBRAN
+00072a 072c      	.DW		PARS5
+00072b dbe5      	RCALL	ZLESS
+                 PARS5:
+00072c da46      	RCALL	QBRAN
+00072d 0734      	.DW		PARS6
+00072e 9601      	ADIW	TOSL,1
+00072f da29      	RCALL	DONXT
+000730 0720      	.DW		PARS4
+000731 dbc3      	RCALL	DUPP
+000732 db9d      	RCALL	TOR
+000733 c005      	RJMP	PARS7
+                 PARS6:
+000734 db7f      	RCALL	RFROM
+000735 dbb8      	RCALL	DROP
+000736 dbbe      	RCALL	DUPP
+000737 9601      	ADIW	TOSL,1
+000738 db97      	RCALL	TOR
+                 PARS7:
+000739 dbce      	RCALL	OVER
+00073a dccf      	RCALL	SUBB
+00073b db78      	RCALL	RFROM
+00073c db77      	RCALL	RFROM
+00073d cccc      	RJMP	SUBB
+                 PARS8:
+00073e dbc9      	RCALL	OVER
+00073f db74      	RCALL	RFROM
+000740 ccc9      	RJMP	SUBB
+                 
+                 ;   PARSE	( c -- b u ; <string> )
+                 ;	Scan input stream and return counted string delimited by c.
+                 
+000741 0df0
+000742 5005
+000743 5241
+000744 4553      	CODE	5,"PARSE"
+                 PARSE:
+000745 db8a      	RCALL	TOR
+000746 ddfb      	RCALL	TIB
+000747 dc20      	RCALL	INN
+000748 da66      	RCALL	AT
+000749 dc99      	RCALL	PLUS	;current input buffer pointer
+00074a dc23      	RCALL	NTIB
+00074b da63      	RCALL	AT
+00074c dc1b      	RCALL	INN
+00074d da61      	RCALL	AT
+00074e dcbb      	RCALL	SUBB	;remaining count
+00074f db64      	RCALL	RFROM
+000750 dfaa      	RCALL	PARS
+000751 dc16      	RCALL	INN
+000752 cdc3      	RJMP	PSTOR
+                 
+                 ;   .(	( -- )
+                 ;	Output following string up to next ) .
+                 
+000753 0e84
+000754 2e82
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2317): macro 'CODE' called here
+000755 0028      	CODE	IMEDD+2,".("
+                 DOTPR:
+000756 d9f0      	RCALL	DOLIT
+000757 0029      	.DW		')'
+000758 dfec      	RCALL	PARSE
+000759 cf2f      	RJMP	TYPES
+                 
+                 ;   (	( -- )
+                 ;	Ignore following string up to next ) . A comment.
+                 
+00075a 0ea8
+00075b 2881      	CODE	IMEDD+1,"("
+                 PAREN:
+00075c d9ea      	RCALL	DOLIT
+00075d 0029      	.DW		')'
+00075e dfe6      	RCALL	PARSE
+00075f cc75      	RJMP	DDROP
+                 
+                 ;   \	( -- )
+                 ;	Ignore following text till the end of line.
+                 
+000760 0eb6
+000761 5c81
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2337): macro 'CODE' called here
+000762 005c      	CODE	IMEDD+1,"\\"
+                 BKSLA:
+000763 d9e3      	RCALL	DOLIT
+000764 000d      	.DW		$D
+000765 dfdf      	RCALL	PARSE
+000766 cc6e      	RJMP	DDROP
+                 
+                 
+                 ;   CHAR	( -- c )
+                 ;	Parse next word and return its first character.
+                 
+000767 0ec2
+000768 4304
+000769 4148
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2348): macro 'CODE' called here
+00076a 0052      	CODE	4,"CHAR"
+                 CHARR:
+00076b dc46      	RCALL	BLANK
+00076c dfd8      	RCALL	PARSE
+00076d db80      	RCALL	DROP
+00076e cb3d      	RJMP	CAT
+                 
+                 ;   TOKEN	( -- a ; <string> )
+                 ;	Parse a word from input stream and copy it to name dictionary.
+                 
+00076f 0ed0
+000770 5405
+000771 4b4f
+000772 4e45      	CODE	5,"TOKEN"
+                 TOKEN:
+000773 dc3e      	RCALL	BLANK
+000774 dfd0      	RCALL	PARSE
+000775 d9d1      	RCALL	DOLIT
+000776 001f      	.DW		31
+000777 dcd4      	RCALL	MIN
+000778 ddbd      	RCALL	HEREE
+000779 dc65      	RCALL 	DDUP
+00077a db26      	RCALL	CSTOR
+00077b dc63      	RCALL 	DDUP
+00077c dc66      	RCALL	PLUS
+00077d 9601      	ADIW	TOSL,1
+00077e d9c8      	RCALL	DOLIT
+00077f 0000      	.DW		0
+000780 db7c      	RCALL	SWAPP
+000781 db1f      	RCALL	CSTOR
+000782 9601      	ADIW	TOSL,1
+000783 db79      	RCALL	SWAPP
+000784 ddf3      	RCALL	UMOVE
+000785 cdb0      	RJMP	HEREE
+                 
+                 ;   WORD	( c -- a ; <string> )
+                 ;	Parse a word from input stream and copy it to code dictionary.
+                 
+000786 0ee0
+000787 5704
+000788 524f
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2383): macro 'CODE' called here
+000789 0044      	CODE	4,"WORD"
+                 WORDD:
+00078a dfba      	RCALL	PARSE
+00078b ddaa      	RCALL	HEREE
+00078c dc52      	RCALL 	DDUP
+00078d db13      	RCALL	CSTOR
+00078e dc50      	RCALL 	DDUP
+00078f dc53      	RCALL	PLUS
+000790 9601      	ADIW	TOSL,1
+000791 d9b5      	RCALL	DOLIT
+000792 0000      	.DW		0
+000793 db69      	RCALL	SWAPP
+000794 db0c      	RCALL	CSTOR
+000795 9601      	ADIW	TOSL,1
+000796 db66      	RCALL	SWAPP
+000797 ddbe      	RCALL	CMOVE
+000798 cd9d      	RJMP	HEREE
+                 
+                 ;; Dictionary search
+                 
+                 ;   NAME>	( na -- ca )
+                 ;	Return a code address given a name address.
+                 
+000799 0f0e
+00079a 4e05
+00079b 4d41
+00079c 3e45      	CODE	5,"NAME>"
+                 NAMET:
+00079d dd90      	RCALL	ICOUNT
+00079e d9a8      	RCALL	DOLIT
+00079f 001f      	.DW		$1F
+0007a0 db79      	RCALL	ANDD
+                 ;	RCALL	CELLP	; 20131121 sam
+0007a1 dc41      	RCALL	PLUS
+0007a2 cc08      	RJMP	ALGND
+                 
+                 ;   SAME?	( b a u -- b a f \ -0+ )
+                 ;	Compare u bytes in two strings. Return 0 if identical.
+                 
+0007a3 0f34
+0007a4 5305
+0007a5 4d41
+0007a6 3f45      	CODE	5,"SAME?"
+                 SAMEQ:
+0007a7 dbfa      	RCALL	TWOSL
+0007a8 db27      	RCALL	TOR
+0007a9 c010      	RJMP	SAME2
+                 SAME1:
+0007aa db5d      	RCALL	OVER
+0007ab db15      	RCALL	RAT
+0007ac dbee      	RCALL	CELLS
+0007ad dc35      	RCALL	PLUS
+0007ae da00      	RCALL	AT
+0007af db58      	RCALL	OVER
+0007b0 db10      	RCALL	RAT
+0007b1 dbe9      	RCALL	CELLS
+0007b2 dc30      	RCALL	PLUS
+0007b3 da03      	RCALL	IAT
+0007b4 dc55      	RCALL	SUBB
+0007b5 dc06      	RCALL	QDUP
+0007b6 d9bc      	RCALL	QBRAN
+0007b7 07ba      	.DW		SAME2
+0007b8 dafb      	RCALL	RFROM
+0007b9 cb34      	RJMP	DROP
+                 SAME2:
+0007ba d99e      	RCALL	DONXT
+0007bb 07aa      	.DW		SAME1
+0007bc d98a      	RCALL	DOLIT
+0007bd 0000      	.DW		0
+0007be 940c 0055 	jmp INT_handler
+                 
+                 ;   find	( a va -- ca na | a F )
+                 ;	Search a vocabulary for a string. Return ca and na if succeeded.
+                 
+0007c0 0f48
+0007c1 6604
+0007c2 6e69
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2451): macro 'CODE' called here
+0007c3 0064      	CODE	4,"find"
+                 FIND:
+0007c4 db38      	RCALL	SWAPP
+0007c5 db2f      	RCALL	DUPP
+0007c6 dae5      	RCALL	CAT
+0007c7 db95      	RCALL	TEMP
+0007c8 d9db      	RCALL	STORE
+0007c9 db2b      	RCALL	DUPP
+0007ca d9e4      	RCALL	AT
+0007cb db04      	RCALL	TOR
+0007cc 9602      	ADIW	TOSL,2	;va a+2 --
+0007cd db2f      	RCALL	SWAPP	;a+2 va --
+                 FIND1:
+0007ce db26      	RCALL	DUPP
+0007cf d9a3      	RCALL	QBRAN
+0007d0 07e3      	.DW		FIND6
+0007d1 db23      	RCALL	DUPP
+0007d2 d9e4      	RCALL	IAT
+0007d3 d973      	RCALL	DOLIT
+0007d4 ff3f      	.DW		$FF3F
+0007d5 db44      	RCALL	ANDD
+0007d6 daea      	RCALL	RAT
+0007d7 db54      	RCALL	XORR
+0007d8 d99a      	RCALL	QBRAN
+0007d9 07de      	.DW		FIND2
+0007da 9602      	ADIW	TOSL,2	;a+2 va+2 --
+0007db d96b      	RCALL	DOLIT
+0007dc ffff      	.DW		-1
+0007dd c004      	RJMP	FIND3
+                 FIND2:
+0007de 9602      	ADIW	TOSL,2	;a+2 va+2 --
+0007df db7d      	RCALL	TEMP
+0007e0 d9ce      	RCALL	AT
+0007e1 dfc5      	RCALL	SAMEQ
+                 FIND3:
+0007e2 c005      	RJMP	FIND4
+                 FIND6:
+0007e3 dad0      	RCALL	RFROM
+0007e4 db09      	RCALL	DROP
+0007e5 db17      	RCALL	SWAPP
+0007e6 9702      	SBIW	TOSL,2
+0007e7 cb15      	RJMP	SWAPP
+                 FIND4:
+0007e8 d98a      	RCALL	QBRAN
+0007e9 07ed      	.DW		FIND5
+0007ea 9704      	SBIW	TOSL,4
+0007eb d9cb      	RCALL	IAT
+0007ec cfe1      	RJMP	FIND1
+                 FIND5:
+0007ed dac6      	RCALL	RFROM
+0007ee daff      	RCALL	DROP
+0007ef db0d      	RCALL	SWAPP
+0007f0 dafd      	RCALL	DROP
+0007f1 9702      	SBIW	TOSL,2
+0007f2 db02      	RCALL	DUPP
+0007f3 dfa9      	RCALL	NAMET
+0007f4 cb08      	RJMP	SWAPP
+                 
+                 ;   NAME?	( a -- ca na | a F )
+                 ;	Search all context vocabularies for a string.
+                 
+0007f5 0f82
+0007f6 4e05
+0007f7 4d41
+0007f8 3f45      	CODE	5,"NAME?"
+                 NAMEQ:
+0007f9 db8c      	RCALL	CNTXT
+0007fa d9b4      	RCALL	AT
+0007fb cfc8      	RJMP	FIND
+                 
+                 ;; Terminal response
+                 
+                 ;   ^H	( bot eot cur -- bot eot cur )
+                 ;	Backup the cursor by one character.
+                 
+0007fc 0fec
+0007fd 5e02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2523): macro 'CODE' called here
+0007fe 0048      	CODE	2,"^H"
+                 BKSP:
+0007ff dad0      	RCALL	TOR
+000800 db07      	RCALL	OVER
+000801 dab2      	RCALL	RFROM
+000802 dafa      	RCALL	SWAPP
+000803 db04      	RCALL	OVER
+000804 db27      	RCALL	XORR
+000805 d96d      	RCALL	QBRAN
+000806 0810      	.DW		BACK1
+000807 d93f      	RCALL	DOLIT
+000808 0008      	.DW		BKSPP
+000809 d91e      	RCALL	EMIT
+00080a 9701      	SBIW	TOSL,1
+00080b dba6      	RCALL	BLANK
+00080c d91b      	RCALL	EMIT
+00080d d939      	RCALL	DOLIT
+00080e 0008      	.DW		BKSPP
+00080f d918      	RCALL	EMIT
+                 BACK1:
+000810 940c 0055 	jmp INT_handler
+                 
+                 ;   TAP	( bot eot cur c -- bot eot cur )
+                 ;	Accept and echo the key stroke and bump the cursor.
+                 
+000812 0ffa
+000813 5403
+000814 5041      	CODE	3,"TAP"
+                 TAP:
+000815 dadf      	RCALL	DUPP
+000816 d911      	RCALL	EMIT
+000817 daf0      	RCALL	OVER
+000818 da88      	RCALL	CSTOR
+000819 9601      	adiw	tosl,1
+00081a 940c 0055 	jmp INT_handler
+                 
+                 ;   kTAP	( bot eot cur c -- bot eot cur )
+                 ;	Process a key stroke, CR or backspace.
+                 
+00081c 1026
+00081d 6b04
+00081e 4154
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2560): macro 'CODE' called here
+00081f 0050      	CODE	4,"kTAP"
+                 KTAP:
+000820 dad4      	RCALL	DUPP
+000821 970d      	SBIW	TOSL,CRR
+000822 d950      	RCALL	QBRAN
+000823 082a      	.DW		KTAP2
+000824 9708      	SBIW	TOSL,BKSPP
+000825 d94d      	RCALL	QBRAN
+000826 0829      	.DW		KTAP1
+000827 db8a      	RCALL	BLANK
+000828 cfec      	RJMP	TAP
+                 KTAP1:
+000829 cfd5      	RJMP	BKSP
+                 KTAP2:
+00082a dac3      	RCALL	DROP
+00082b dad1      	RCALL	SWAPP
+00082c dac1      	RCALL	DROP
+00082d cac7      	RJMP	DUPP
+                 
+                 ;   accept	( b u -- b u )
+                 ;	Accept characters to input buffer. Return with actual count.
+                 
+00082e 103a
+00082f 6106
+000830 6363
+000831 7065
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2582): macro 'CODE' called here
+000832 0074      	CODE	6,"accept"
+                 ACCEP:
+000833 dad4      	RCALL	OVER
+000834 dbae      	RCALL	PLUS
+000835 dad2      	RCALL	OVER
+                 ACCP1:
+000836 dba8      	RCALL	DDUP
+000837 daf4      	RCALL	XORR
+000838 d93a      	RCALL	QBRAN
+000839 0847      	.DW		ACCP4
+00083a de2c      	RCALL	KEY
+00083b dab9      	RCALL	DUPP
+00083c db75      	RCALL	BLANK
+00083d dbcc      	RCALL	SUBB
+00083e d908      	RCALL	DOLIT
+00083f 00ff      	.DW		$FF    ; $FF for chinese ; $5F  FOR ASCII CODE ; albert  2012/5/2 
+000840 dbea      	RCALL	ULESS
+000841 d931      	RCALL	QBRAN
+000842 0845      	.DW		ACCP2
+000843 dfd1      	RCALL	TAP
+000844 c001      	RJMP	ACCP3
+                 ACCP2:
+000845 dfda      	RCALL	KTAP
+                 ACCP3:
+000846 cfef      	RJMP	ACCP1
+                 ACCP4:
+000847 daa6      	RCALL	DROP
+000848 dabf      	RCALL	OVER
+000849 cbc0      	RJMP	SUBB
+                 
+                 ;   EXPECT	( b u -- )
+                 ;	Accept input stream and store count in SPAN.
+                 
+00084a 105e
+00084b 4506
+00084c 5058
+00084d 4345
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2615): macro 'CODE' called here
+00084e 0054      	CODE	6,"EXPECT"
+                 EXPEC:
+00084f dfe3      	RCALL	ACCEP
+000850 db12      	RCALL	SPAN
+000851 d952      	RCALL	STORE
+000852 ca9b      	RJMP	DROP
+                 
+                 ;   QUERY	( -- )
+                 ;	Accept input stream to terminal input buffer.
+                 
+000853 1096
+000854 5105
+000855 4555
+000856 5952      	CODE	5,"QUERY"
+                 QUERY:
+000857 dcea      	RCALL	TIB
+000858 d8ee      	RCALL	DOLIT
+000859 0050      	.DW		80
+00085a dfd8      	RCALL	ACCEP
+00085b db12      	RCALL	NTIB
+00085c d947      	RCALL	STORE
+00085d da90      	RCALL	DROP
+00085e d8e8      	RCALL	DOLIT
+00085f 0000      	.DW		0
+000860 db07      	RCALL	INN
+000861 c942      	RJMP	STORE
+                 
+                 ;; Error handling
+                 
+                 
+                 ;   ERROR	( a -- )
+                 ;	Return address of a null string with zero count.
+                 
+000862 10a8
+000863 4505
+000864 5252
+000865 524f      	CODE	5,"ERROR"
+                 ERROR:
+000866 de09      	RCALL	SPACE
+000867 dcb8      	RCALL	COUNT
+000868 de20      	RCALL	TYPES
+000869 d8dd      	RCALL	DOLIT
+00086a 003f      	.DW		$3F
+00086b d8bc      	RCALL	EMIT
+00086c d00d      	RCALL   ERR_HANDLING  ; CAHNGE   
+                 ABORT:
+00086d de32      	RCALL	CR
+00086e da1a      	RCALL	EMPTY_BUF
+00086f efc0      	ldi 	yl,low(SPP)
+000870 e0d6      	ldi 	yh,high(SPP)
+000871 c07b      	RJMP	QUIT
+                 	
+000872 10c6
+000873 450c
+000874 5252
+000875 485f
+000876 4e41
+000877 4c44
+000878 4e49
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2661): macro 'CODE' called here
+000879 0047      	CODE	12,"ERR_HANDLING" ; ADD FOR CHANGE 8 / 23  
+                 ERR_HANDLING:
+00087a 940c 02c1     JMP  RAT	; to be replaced
+                     
+00087c 10e6
+00087d 410a
+00087e 4c4c
+00087f 574f
+000880 425f
+000881 4f4f
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2665): macro 'CODE' called here
+000882 0054      	CODE	10,"ALLOW_BOOT" ;  ADD FOR CHANGE 8 / 30 
+                 ALLOW_BOOT:
+000883 940c 02c1     JMP  RAT	; to be replaced
+000885 940c 0055 	jmp INT_handler	; 20131127 應刪除
+                 
+                 
+                 ;   abort"	( f -- )
+                 ;	Run time routine of ABORT" . Abort with a message.
+                 
+000887 10fa
+000888 6146
+000889 6f62
+00088a 7472      	CODE	COMPO+6,"abort"
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2675): warning: .cseg .db misalignment - padding zero byte
+00088b 0022      	.DB		'"'
+                 ABORQ:
+00088c d8e6      	RCALL	QBRAN
+00088d 0893      	.DW		ABOR1	;text flag
+00088e de1a      	RCALL	DOSTR
+00088f dc9e      	RCALL	ICOUNT	;pass error string
+000890 de04      	RCALL	ITYPES
+000891 dfdb      	RCALL	ABORT
+000892 c05a      	RJMP	QUIT
+                 ABOR1:
+000893 de15      	RCALL	DOSTR
+000894 ca59      	RJMP	DROP
+                 
+                 ;; The text interpreter
+                 
+                 ;   $INTERPRET	( a -- )
+                 ;	Interpret a word. If failed, try to convert it to an integer.
+                 
+000895 1110
+000896 240a
+000897 4e49
+000898 4554
+000899 5052
+00089a 4552
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2693): macro 'CODE' called here
+00089b 0054      	CODE	10,"$INTERPRET"
+                 INTER:
+00089c df5c      	RCALL	NAMEQ
+00089d db1e      	RCALL	QDUP	;?defined
+00089e d8d4      	RCALL	QBRAN
+00089f 08af      	.DW		INTE1
+0008a0 d916      	RCALL	IAT
+0008a1 d8a5      	RCALL	DOLIT
+0008a2 0040      	.DW		COMPO
+0008a3 da76      	RCALL	ANDD	;?compile only lexicon bits
+0008a4 dfe7      	RCALL	ABORQ
+0008a5 200d
+0008a6 6f63
+0008a7 706d
+0008a8 6c69
+0008a9 2065
+0008aa 6e6f
+0008ab 796c      	.DB		13," compile only"
+0008ac d8e5      	RCALL	EXECU
+0008ad 940c 0055 	jmp INT_handler	;execute defined word
+                 INTE1:
+0008af dd6c      	RCALL	NUMBQ
+0008b0 d8c2      	RCALL	QBRAN
+0008b1 08b4      	.DW		INTE2
+0008b2 940c 0055 	jmp INT_handler
+                 INTE2:
+0008b4 cfb1      	RJMP	ERROR	;error
+                 
+                 ;   [	( -- )
+                 ;	Start the text interpreter.
+                 
+0008b5 112c
+0008b6 5b81      	CODE	IMEDD+1,"["
+                 LBRAC:
+0008b7 d88f      	RCALL	DOLIT
+0008b8 1138      	.DW		INTER*2
+0008b9 dac0      	RCALL	TEVAL
+0008ba c8e9      	RJMP	STORE
+                 
+                 ;   .OK	( -- )
+                 ;	Display "ok" only while interpreting.
+                 
+0008bb 116c
+0008bc 2e03
+0008bd 4b4f      	CODE	3,".OK"
+                 DOTOK:
+0008be d888      	RCALL	DOLIT
+0008bf 1138      	.DW		INTER*2
+0008c0 dab9      	RCALL	TEVAL
+0008c1 d8ed      	RCALL	AT
+0008c2 db5a      	RCALL	EQUAL
+0008c3 d8af      	RCALL	QBRAN
+0008c4 08c9      	.DW		DOTO1
+0008c5 ddff      	RCALL	DOTQP
+0008c6 2004
+0008c7 a5e5
+0008c8 20bd      	.DB		4," 好 " ; 4, " ok " ; albert  2012/5/2
+0008c9 cdd6      DOTO1:	RJMP	CR
+                 
+                 ;   ?STACK	( -- )
+                 ;	Abort if the data stack underflows.
+                 
+0008ca 1178
+0008cb 3f06
+0008cc 5453
+0008cd 4341
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2744): macro 'CODE' called here
+0008ce 004b      	CODE	6,"?STACK"
+                 QSTAC:
+0008cf dc34      	RCALL	DEPTH
+0008d0 da40      	RCALL	ZLESS	;check only for underflow
+0008d1 dfba      	RCALL	ABORQ
+0008d2 200a
+0008d3 6e75
+0008d4 6564
+0008d5 6672
+0008d6 6f6c
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2749): warning: .cseg .db misalignment - padding zero byte
+0008d7 0077      	.DB		10," underflow"
+0008d8 940c 0055 	jmp INT_handler
+                 
+                 ;   EVAL	( -- )
+                 ;	Interpret the input stream.
+                 
+0008da 1196
+0008db 4504
+0008dc 4156
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2755): macro 'CODE' called here
+0008dd 004c      	CODE	4,"EVAL"
+                 EVAL:
+0008de de94      EVAL1:	RCALL	TOKEN
+0008df da15      	RCALL	DUPP
+0008e0 d9cb      	RCALL	CAT	;?input stream empty
+0008e1 d891      	RCALL	QBRAN
+0008e2 08e7      	.DW		EVAL2
+0008e3 da96      	RCALL	TEVAL
+0008e4 dc66      	RCALL	ATEXE
+                 ;	RCALL	INTER
+0008e5 dfe9      	RCALL	QSTAC	;evaluate input, check stack
+0008e6 cff7      	RJMP	EVAL1
+                 EVAL2:
+0008e7 da06      	RCALL	DROP
+0008e8 cfd5      	RJMP	DOTOK
+                 
+                 ;; Shell
+                 
+                 ;   QUIT	( -- )
+                 ;	Reset return stack pointer and start text interpreter.
+                 
+0008e9 11b6
+0008ea 5104
+0008eb 4955
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2776): macro 'CODE' called here
+0008ec 0054      	CODE	4,"QUIT"
+                 QUIT:
+                    
+0008ed efa0      	ldi 	xl,low(RPP)
+0008ee bfad      	out_ 	SPL,xl
+0008ef e0b7      	ldi 	xh,high(RPP)
+0008f0 bfbe      	out_ 	SPH,xh
+0008f1 d855      	RCALL	DOLIT
+0008f2 0700      	.DW		TIBB
+0008f3 da80      	RCALL	TTIB
+0008f4 d8af      	RCALL	STORE
+                 QUIT1:
+0008f5 dfc1      	RCALL	LBRAC	;start interpretation
+                 QUIT2:
+0008f6 d850      	RCALL	DOLIT	; 		20130926 sam
+0008f7 000d      	.DW		13		; ACK 	20130926 sam
+0008f8 d82f      	RCALL	EMIT	; 		20130926 sam
+0008f9 d84d      	RCALL	DOLIT	; 		20130926 sam
+0008fa 0006      	.DW		6		; ACK 	20130926 sam
+0008fb d82c      	RCALL	EMIT	; 		20130926 sam
+0008fc df5a      	RCALL	QUERY	;get input
+0008fd dfe0      	RCALL	EVAL
+0008fe cff7      	RJMP	QUIT2	;continue till error
+                 
+                 ;; The compiler
+                 
+                 ;   '	( -- ca )
+                 ;	Search context vocabularies for the next word in input stream.
+                 
+0008ff 11d4
+000900 2701      	CODE	1,"'"
+                 TICK:
+000901 de71      	RCALL	TOKEN
+000902 def6      	RCALL	NAMEQ	;?defined
+000903 d86f      	RCALL	QBRAN
+000904 0866      	.DW		ERROR
+000905 940c 0055 	jmp INT_handler				;yes, push code address
+                 TICK1:
+000907 cf5e      	RJMP	ERROR	;no, error
+                 
+                 ;; Tools
+                 
+                 ;   DUMP	( a u -- )
+                 ;	Dump 128 bytes from ain RAM, in a formatted manner.
+                 
+000908 1200
+000909 4404
+00090a 4d55
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2820): macro 'CODE' called here
+00090b 0050      	CODE	4,"DUMP"
+                 DUMP:
+00090c d83a      	RCALL	DOLIT
+00090d 0007      	.DW		7
+00090e d9c1      	RCALL	TOR		;start count down loop
+00090f dd90      DUMP1:	RCALL	CR
+000910 d9e4      	RCALL	DUPP
+000911 d835      	RCALL	DOLIT
+000912 0005      	.DW		5
+000913 ddc1      	RCALL	UDOTR
+000914 dd5b      	RCALL	SPACE
+000915 d831      	RCALL	DOLIT
+000916 000f      	.DW		15
+000917 d9b8      	RCALL	TOR
+                 DUMP2:
+000918 dc07      	RCALL	COUNT
+000919 d82d      	RCALL	DOLIT
+00091a 0003      	.DW		3
+00091b ddb9      	RCALL	UDOTR
+00091c d83c      	RCALL	DONXT	;display printable characters
+00091d 0918      	.DW		DUMP2
+00091e dd51      	RCALL	SPACE
+00091f d9d5      	RCALL	DUPP
+000920 d826      	RCALL	DOLIT
+000921 0010      	.DW		16
+000922 dae7      	RCALL	SUBB
+000923 d823      	RCALL	DOLIT
+000924 0010      	.DW		16
+000925 dd63      	RCALL	TYPES
+000926 d832      	RCALL	DONXT
+000927 090f      	.DW		DUMP1	;loop till done
+000928 c9c5      	RJMP	DROP
+                 
+                 ;   IDUMP	( a -- )
+                 ;	Dump 128 bytes from a in flash, in a formatted manner.
+                 
+000929 1212
+00092a 4905
+00092b 5544
+00092c 504d      	CODE	5,"IDUMP"
+                 IDUMP:
+00092d d819      	RCALL	DOLIT
+00092e 0007      	.DW		7
+00092f d9a0      	RCALL	TOR	;start count down loop
+                 IDUMP1:
+000930 dd6f      	RCALL	CR
+000931 d9c3      	RCALL	DUPP
+000932 d814      	RCALL	DOLIT
+000933 0005      	.DW		5
+000934 dda0      	RCALL	UDOTR
+000935 dd3a      	RCALL	SPACE
+000936 d810      	RCALL	DOLIT
+000937 000f      	.DW		15
+000938 d997      	RCALL	TOR
+                 IDUMP2:
+000939 dbf4      	RCALL	ICOUNT
+00093a d80c      	RCALL	DOLIT
+00093b 0003      	.DW		3
+00093c dd98      	RCALL	UDOTR
+00093d d81b      	RCALL	DONXT	;display printable characters
+00093e 0939      	.DW		IDUMP2
+00093f dd30      	RCALL	SPACE
+000940 d9b4      	RCALL	DUPP
+000941 d805      	RCALL	DOLIT
+000942 0010      	.DW		16
+000943 dac6      	RCALL	SUBB
+000944 d802      	RCALL	DOLIT
+000945 0010      	.DW		16
+000946 dd4e      	RCALL	ITYPES
+000947 d811      	RCALL	DONXT
+000948 0930      	.DW		IDUMP1	;loop till done
+000949 c9a4      	RJMP	DROP
+                 
+                 
+                 ;   .S	( ... -- ... )
+                 ;	Display the contents of the data stack.
+                 
+00094a 1254
+00094b 2e02
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2894): macro 'CODE' called here
+00094c 0053      	CODE	2,".S"
+                 DOTS:
+00094d dbb6      	RCALL	DEPTH	;stack depth
+00094e d981      	RCALL	TOR	;start count down loop
+00094f c003      	RJMP	DOTS2	;skip first pass
+                 DOTS1:
+000950 d970      	RCALL	RAT
+000951 dbbc      	RCALL	PICK
+000952 dd95      	RCALL	DOT	;index stack, display contents
+                 DOTS2:
+000953 d805      	RCALL	DONXT 
+000954 0950      	.DW		DOTS1	;loop till done
+000955 dd6f      	RCALL	DOTQP
+000956 2004
+000957 733c
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2907): warning: .cseg .db misalignment - padding zero byte
+000958 0070      	.DB		4," <sp"
+000959 940c 0055 	jmp INT_handler
+                 
+                 ;   >NAME	( ca -- na | F )
+                 ;	Convert code address to a name address.
+                 
+00095b 1296
+00095c 3e05
+00095d 414e
+00095e 454d      	CODE	5,">NAME"
+                 TNAME:
+00095f d970      	RCALL	TOR
+000960 da25      	RCALL	CNTXT
+000961 d84d      	RCALL	AT	;na
+                 TNAM1:	
+000962 d992      	RCALL	DUPP	;na na
+000963 d80f      	RCALL	QBRAN
+000964 096f      	.DW		TNAM2
+000965 d98f      	RCALL	DUPP	;na na
+000966 de36      	RCALL	NAMET	;na ca
+000967 d959      	RCALL	RAT	;na ca ca
+000968 d9c3      	RCALL	XORR	;na f
+000969 d809      	RCALL	QBRAN
+00096a 096f      	.DW		TNAM2
+00096b 9702      	SBIW	TOSL,2	;la
+00096c d84a      	RCALL	IAT	;na'
+00096d d815      	RCALL	BRAN
+00096e 0962      	.DW		TNAM1
+                 TNAM2:
+00096f d944      	RCALL	RFROM	;na or 0
+000970 c97d      	RJMP	DROP
+                 
+                 ;   .ID	( na -- )
+                 ;	Display the name at address.
+                 
+000971 12b8
+000972 2e03
+000973 4449      	CODE	3,".ID"
+                 DOTID:
+000974 dbb9      	RCALL	ICOUNT
+000975 940e 0147 	CALL	DOLIT
+000977 001f      	.DW		31
+000978 d9a1      	RCALL	ANDD
+000979 cd1b      	RJMP 	ITYPES
+                 
+                 ;   WORDS	( -- )
+                 ;	Display the names in the context vocabulary.
+                 
+00097a 12e4
+00097b 5705
+00097c 524f
+00097d 5344      	CODE	5,"WORDS"
+                 WORDS:
+00097e dd21      	RCALL	CR
+00097f da06      	RCALL	CNTXT
+000980 d82e      	RCALL	AT	;na
+                 WORS1:	
+000981 da3a      	RCALL	QDUP	;end of list?
+000982 940e 0173 	CALL	QBRAN
+000984 098d      	.DW		WORS2
+000985 d96f      	RCALL	DUPP	;na na
+000986 dce9      	RCALL	SPACE
+000987 dfec      	RCALL	DOTID	;display a name
+000988 9702      	SBIW	TOSL,2	;la
+000989 d82d      	RCALL	IAT	;na'
+00098a 940e 0183 	CALL	BRAN
+00098c 0981      	.DW		WORS1
+                 WORS2:
+00098d 940c 0055 	jmp INT_handler
+                 
+                 
+                 ;; Hardware reset
+                 
+                 ;   hi	( -- )
+                 ;	Display the sign-on message of eForth.
+                 
+00098f 12f6
+000990 6802
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2975): macro 'CODE' called here
+000991 0069      	CODE	2,"hi"
+                 HI:
+                 ;	RCALL	STOIO
+000992 dd0d      	RCALL	CR
+000993 dd31      	RCALL	DOTQP 	;initialize I/O
+000994 3311
+000995 3832
+000996 4665
+000997 726f
+000998 6874
+000999 4420
+00099a 5645
+00099b 2e30
+00099c 3637      	.DB		17,"328eForth DEV0.76"	;model ; 
+00099d cd02      	RJMP	CR
+                 
+                 ;   COLD	( -- )
+                 ;	The hilevel cold start sequence.
+                 
+00099e 1320
+00099f 4304
+0009a0 4c4f
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(2986): macro 'CODE' called here
+0009a1 0044      	CODE	4,"COLD"
+                 COLD:
+                 COLD1:
+0009a2 940e 0135 	CALL	STOIO	
+0009a4 940e 0147 	CALL	DOLIT
+0009a6 0100      	.DW		$100
+0009a7 d94d      	RCALL	DUPP
+0009a8 940e 09cd 	CALL	READ	;initialize user area
+0009aa 940e 0147 	CALL	DOLIT	;init older buffer
+0009ac 011e      	.DW		OLDER
+0009ad d801      	RCALL	AT		;
+0009ae d891      	RCALL	READ_FLASH
+0009af d8b3      	RCALL	SWITCH
+0009b0 940e 0147 	CALL	DOLIT	;init newer buffer
+0009b2 011e      	.DW		OLDER
+0009b3 940e 01af 	CALL	AT		;
+0009b5 d88a      	RCALL	READ_FLASH
+0009b6 d8ac      	RCALL	SWITCH
+0009b7 da1d      	RCALL	DDROP
+0009b8 940e 0883 	CALL	ALLOW_BOOT ; M
+0009ba d997      	RCALL	TBOOT	
+0009bb db8f      	RCALL	ATEXE
+0009bc cf30      	RJMP	QUIT	;start interpretation
+                 
+                 
+                 
+                 ; Page Erase
+                 ;	ERASE ( a -- )
+                 ;	Erase a page of flash memory
+0009bd 133e
+0009be 4505
+0009bf 4152
+0009c0 4553      	CODE	5,"ERASE"
+0009c1 940c 3fd0 	JMP		ERASE
+                 
+                 ; Page Write
+                 ; 	WRITE ( ram flash -- )	
+                 ; 	transfer data from RAM to Flash page buffer
+0009c3 137c
+0009c4 5705
+0009c5 4952
+0009c6 4554      	CODE	5,"WRITE";; Device dependent I/O
+0009c7 940c 3fd7 	JMP		WRITE
+                 
+                 ; Page Read
+                 ; 	READ ( flash ram -- )	
+                 ; 	transfer data from Flash to RAM page buffer
+                 
+0009c9 1388
+0009ca 5204
+0009cb 4145
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3028): macro 'CODE' called here
+0009cc 0044      	CODE	4,"READ"
+                 READ:
+0009cd 01dc      	movw	xl,tosl
+0009ce 9189
+0009cf 9199      	loadtos
+0009d0 01fc      	movw	zl,tosl
+0009d1 9189
+0009d2 9199      	loadtos
+                 READ_1:	
+                 ; read back and check, optional
+0009d3 e860      	ldi 	looplo, low(PAGESIZEB) ;init loop variable
+                 Rdloop:
+0009d4 9005      	lpm 	r0, Z+
+0009d5 920d      	st 		X+, r0
+0009d6 5061      	subi 	looplo, 1 ;use subi for PAGESIZEB<=256
+0009d7 f7e1       	brne 	Rdloop
+0009d8 940c 0055 	jmp INT_handler
+                 
+                 .equ 	PAGESIZEB = PAGESIZE*2 ;PAGESIZEB is page size in BYTES, not words
+                 .def	spmcrval = r20
+                 .def	looplo = r22
+                 .def	loophi = r23
+                 
+                 
+                 ;===============================================================
+                 ; Compiler
+                 
+                 ; .org	$100   ;
+                 
+                 ;   1+	( a -- a )
+                 ;	Add 1 to address.
+                 
+0009da 1394
+0009db 3102
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3058): macro 'CODE' called here
+0009dc 002b      	CODE	2,"1+"
+                 ONEP:
+0009dd 9601      	adiw	tosl,1
+0009de 940c 0055 	jmp INT_handler
+                 
+                 ;   1-	( a -- a )
+                 ;	Subtract 1 from address.
+                 
+0009e0 13b6
+0009e1 3102
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3066): macro 'CODE' called here
+0009e2 002d      	CODE	2,"1-"
+                 ONEM:
+0009e3 9701      	sbiw	tosl,1
+0009e4 940c 0055 	jmp INT_handler
+                 
+                 
+                 ;   2+	( a -- a )
+                 ;	Add cell size in byte to address.
+                 
+0009e6 13c2
+0009e7 3202
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3075): macro 'CODE' called here
+0009e8 002b      	CODE	2,"2+"
+                 CELLP:
+0009e9 9602      	adiw	tosl,2
+0009ea 940c 0055 	jmp INT_handler
+                 
+                 
+                 ;   2-	( a -- a )
+                 ;	Subtract cell size in byte from address.
+                 
+0009ec 13ce
+0009ed 3202
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3084): macro 'CODE' called here
+0009ee 002d      	CODE	2,"2-"
+                 CELLM:
+0009ef 9702      	sbiw	tosl,2
+0009f0 940c 0055 	jmp INT_handler
+                 
+                 ; 	>	( n1 n2 -- flag ) Compare
+                 ; 	compares two values (signed)
+                 
+0009f2 13da
+0009f3 3e01      	CODE	1,">"
+                 GREATER:
+0009f4 9129      	ld 		temp2, Y+
+0009f5 9139      	ld 		temp3, Y+
+0009f6 1728      	cp 		temp2, tosl
+0009f7 0739      	cpc 	temp3, tosh
+0009f8 c00d      	rjmp 	DGRE1
+                 
+                 ; 	D>	( d1 d2 -- flag ) Compare
+                 ; 	compares two d values (signed)
+                 
+0009f9 13e6
+0009fa 4402
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3103): macro 'CODE' called here
+0009fb 003e      	CODE	2,"D>"
+                 DGRE:	
+0009fc 9109      	ld 		temp0, Y+
+0009fd 9119      	ld 		temp1, Y+
+0009fe 9129      	ld 		temp2, Y+
+0009ff 9139      	ld 		temp3, Y+
+000a00 90e9      	ld 		temp4, Y+
+000a01 90f9      	ld 		temp5, Y+
+000a02 16e0      	cp 		temp4, temp0
+000a03 06f1      	cpc 	temp5, temp1
+000a04 0728      	cpc 	temp2, tosl
+000a05 0739      	cpc 	temp3, tosh
+                 DGRE1:
+000a06 01c1      	movw 	tosl,zerol
+000a07 f024      	brlt 	DGRE2
+000a08 f019      	brbs 	1, DGRE2
+000a09 9701      	sbiw 	tosl,1
+000a0a 940c 0055 	jmp INT_handler
+                 DGRE2:
+000a0c 940c 0055 	jmp INT_handler
+                 
+                 ; 	D+	( d1 d2 -- d3) Arithmetics
+                 ; 	add double cell values
+                 
+000a0e 13f4
+000a0f 4402
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3127): macro 'CODE' called here
+000a10 002b      	CODE	2,"D+"
+                 DPLUS:
+000a11 9129      	ld 		temp2, Y+
+000a12 9139      	ld 		temp3, Y+
+000a13 90e9      	ld 		temp4, Y+
+000a14 90f9      	ld 		temp5, Y+
+000a15 9149      	ld 		temp6, Y+
+000a16 9159      	ld 		temp7, Y+
+000a17 0f24      	add 	temp2, temp6
+000a18 1f35      	adc 	temp3, temp7
+000a19 1d8e      	adc 	tosl, temp4
+000a1a 1d9f      	adc 	tosh, temp5
+000a1b 933a      	st 		-Y, temp3
+000a1c 932a      	st 		-Y, temp2
+000a1d 940c 0055 	jmp INT_handler
+                 
+                 ; 	D-	( d1 d2 -- d3 ) Arithmetics
+                 ; 	subtract double cell values
+                 
+000a1f 141e
+000a20 4402
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3146): macro 'CODE' called here
+000a21 002d      	CODE	2,"D-"
+                 DMINUS:
+000a22 9129      	ld 		temp2, Y+
+000a23 9139      	ld 		temp3, Y+
+000a24 90e9      	ld 		temp4, Y+
+000a25 90f9      	ld 		temp5, Y+
+000a26 9149      	ld 		temp6, Y+
+000a27 9159      	ld 		temp7, Y+
+000a28 1b42      	sub 	temp6, temp2
+000a29 0b53      	sbc 	temp7, temp3
+000a2a 0ae8      	sbc 	temp4, tosl
+000a2b 0af9      	sbc 	temp5, tosh
+000a2c 935a      	st 		-Y, temp7
+000a2d 934a      	st 		-Y, temp6
+000a2e 01c7      	movw 	tosl, temp4
+000a2f 940c 0055 	jmp INT_handler
+                 
+                 ;	ALLOT	( n -- )
+                 ;	Allocate n bytes to the code dictionary.
+                 
+000a31 1440
+000a32 4105
+000a33 4c4c
+000a34 544f      	CODE	5,"ALLOT"
+                 ALLOT:
+000a35 940e 0390 	CALL	DPP
+000a37 940c 0516 	JMP		PSTOR
+                 
+                 ;   IALLOT	( n -- )
+                 ;	Allocate n bytes to the code dictionary.
+                 
+000a39 1464
+000a3a 4906
+000a3b 4c41
+000a3c 4f4c
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3174): macro 'CODE' called here
+000a3d 0054      	CODE	6,"IALLOT"
+                 IALLOT:
+000a3e 940e 038b 	CALL	CPP
+000a40 940c 0516 	JMP		PSTOR
+                 
+                 ;   ,	( w -- )
+                 ;	Compile an integer into the code dictionary.
+                 
+000a42 1474
+000a43 2c01      	CODE	1,","
+                 COMMA:
+000a44 940e 038b 	CALL	CPP
+000a46 940e 01af 	CALL	AT
+000a48 940e 02f5 	CALL	DUPP
+000a4a 940e 09e9 	CALL	CELLP	;cell boundary
+000a4c 940e 038b 	CALL	CPP
+000a4e 940e 01a4 	CALL	STORE
+000a50 940c 0212 	JMP		ISTOR
+                 
+                 ;   call,	( ca -- )
+                 ;	Assemble a call instruction to ca.
+                 
+000a52 1486
+000a53 6305
+000a54 6c61
+000a55 2c6c      	CODE	5,"call,"
+                 CALLC:
+000a56 940e 0147 	CALL	DOLIT
+000a58 940e      	.DW		CALLL
+000a59 940e 0a44 	CALL	COMMA
+000a5b cfe8      	RJMP	COMMA	;328 long call
+                 
+                 ;   [COMPILE]	( -- ; <string> )
+                 ;	Compile the next immediate word into code dictionary.
+                 
+000a5c 14a6
+000a5d 5b89
+000a5e 4f43
+000a5f 504d
+000a60 4c49
+000a61 5d45      	CODE	IMEDD+9,"[COMPILE]"
+                 BCOMP:
+000a62 940e 0901 	CALL	TICK
+000a64 940e 03a2 	CALL	TWOSL
+000a66 cfef      	RJMP	CALLC
+                 
+                 ;   COMPILE	( -- )
+                 ;	Compile the next address in colon list to code dictionary.
+                 
+000a67 14ba
+000a68 4347
+000a69 4d4f
+000a6a 4950
+000a6b 454c      	CODE	COMPO+7,"COMPILE"
+                 COMPI:
+000a6c 940e 02b4 	CALL	RFROM
+000a6e 940e 039b 	CALL	CELLS
+000a70 940e 02f5 	CALL	DUPP
+000a72 940e 01b7 	CALL	IAT		;fixed 20131107 sam
+                 ;	CALL	AT
+000a74 940e 0a44 	CALL	COMMA	;compile call instruction
+000a76 940e 09e9 	CALL	CELLP
+000a78 940e 02f5 	CALL	DUPP
+000a7a 940e 01b7 	CALL	IAT		;fixed 20131107 sam
+                 ;	CALL	AT
+000a7c 940e 0a44 	CALL	COMMA	;compile address
+000a7e 940e 09e9 	CALL	CELLP
+000a80 940e 03a2 	CALL	TWOSL
+000a82 940e 02d0 	CALL	TOR
+000a84 940c 0055 	jmp INT_handler				;adjust return address
+                 
+                 ;   LITERAL	( w -- )
+                 ;	Compile tos to code dictionary as an integer literal.
+                 
+000a86 14d0
+000a87 4c87
+000a88 5449
+000a89 5245
+000a8a 4c41      	CODE  IMEDD+7,"LITERAL" ; FIXED 2012/9/25
+                 LITER: 
+000a8b 940e 0147 	CALL	DOLIT
+000a8d 0147      	.DW		DOLIT
+000a8e 940e 0a56 	CALL	CALLC
+000a90 cfb3      	RJMP	COMMA
+                 
+                 ;   $,"	( -- )
+                 ;	Compile a literal string up to next " .
+                 
+000a91 150e
+000a92 2403      	CODE	3,'$'
+000a93 222c      	.DB		',','"'
+                 STRCQ:
+000a94 940e 0147 	CALL	DOLIT
+000a96 0022      	.DW		'"'
+000a97 940e 078a 	CALL	WORDD	;move string to code dictionary
+000a99 940e 02f5 	CALL	DUPP
+000a9b 940e 02ac 	CALL	CAT
+000a9d 940e 03a2 	CALL	TWOSL
+000a9f 940e 02d0 	CALL	TOR
+                 STRCQ1:
+000aa1 940e 02f5 	CALL	DUPP
+000aa3 940e 01af 	CALL	AT
+000aa5 940e 0a44 	CALL	COMMA
+000aa7 940e 09e9 	CALL	CELLP
+000aa9 940e 0159 	CALL	DONXT
+000aab 0aa1      	.DW		STRCQ1
+000aac 940c 02ee 	JMP		DROP
+                 
+                 ;; Structures
+                 
+                 ;   BEGIN	( -- a )
+                 ;	Start an infinite or indefinite loop structure.
+                 
+000aae 1524
+000aaf 4285
+000ab0 4745
+000ab1 4e49      	CODE	IMEDD+5,"BEGIN"
+                 BEGIN:
+000ab2 940e 038b 	CALL	CPP
+000ab4 940c 01af 	JMP		AT
+                 
+                 ;   FOR	( -- a )
+                 ;	Start a FOR-NEXT loop structure in a colon definition.
+                 
+000ab6 155e
+000ab7 4683
+000ab8 524f      	CODE	IMEDD+3,"FOR"
+                 FOR:
+000ab9 940e 0147 	CALL	DOLIT
+000abb 02d0      	.DW		TOR
+000abc 940e 0a56 	CALL	CALLC
+000abe cff3      	RJMP	BEGIN
+                 
+                 ;   NEXT	( a -- )
+                 ;	Terminate a FOR-NEXT loop structure.
+                 
+000abf 156e
+000ac0 4e84
+000ac1 5845
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3287): macro 'CODE' called here
+000ac2 0054      	CODE	IMEDD+4,"NEXT"
+                 NEXT:
+000ac3 940e 0147 	CALL	DOLIT
+000ac5 0159      	.DW		DONXT
+000ac6 940e 0a56 	CALL	CALLC
+000ac8 940e 03a2 	CALL	TWOSL
+000aca cf79      	RJMP	COMMA
+                 
+                 ;   UNTIL	( a -- )
+                 ;	Terminate a BEGIN-UNTIL indefinite loop structure.
+                 
+000acb 1580
+000acc 5585
+000acd 544e
+000ace 4c49      	CODE	IMEDD+5,"UNTIL"
+                 UNTIL:
+000acf 940e 0147 	CALL	DOLIT
+000ad1 0173      	.DW		QBRAN
+000ad2 940e 0a56 	CALL	CALLC
+000ad4 940e 03a2 	CALL	TWOSL
+000ad6 cf6d      	RJMP	COMMA
+                 
+                 ;   AGAIN	( a -- )
+                 ;	Terminate a BEGIN-AGAIN infinite loop structure.
+                 
+000ad7 1598
+000ad8 4185
+000ad9 4147
+000ada 4e49      	CODE	IMEDD+5,"AGAIN"
+                 AGAIN:
+000adb 940e 0147 	CALL	DOLIT
+000add 0183      	.DW		BRAN
+000ade 940e 0a56 	CALL	CALLC
+000ae0 940e 03a2 	CALL	TWOSL
+000ae2 cf61      	RJMP	COMMA
+                 
+                 ;   IF	( -- A )
+                 ;	Begin a conditional branch structure.
+                 
+000ae3 15b0
+000ae4 4982
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3320): macro 'CODE' called here
+000ae5 0046      	CODE	IMEDD+2,"IF"
+                 IFF:
+000ae6 940e 0147 	CALL	DOLIT
+000ae8 0173      	.DW		QBRAN
+000ae9 940e 0a56 	CALL	CALLC
+000aeb 940e 0ab2 	CALL	BEGIN
+000aed 940e 0147 	CALL	DOLIT
+000aef 0002      	.DW		2
+000af0 cf4d      	RJMP	IALLOT
+                 
+                 ;   AHEAD	( -- A )
+                 ;	Compile a forward branch instruction.
+                 
+000af1 15c8
+000af2 4185
+000af3 4548
+000af4 4441      	CODE	IMEDD+5,"AHEAD"
+                 AHEAD:
+000af5 940e 0147 	CALL	DOLIT
+000af7 0183      	.DW		BRAN
+000af8 940e 0a56 	CALL	CALLC
+000afa 940e 0ab2 	CALL	BEGIN
+000afc 940e 0147 	CALL	DOLIT
+000afe 0002      	.DW		2
+000aff 940c 0a3e 	JMP		IALLOT
+                 
+                 ;   REPEAT	( A a -- )
+                 ;	Terminate a BEGIN-WHILE-REPEAT indefinite loop.
+                 
+000b01 15e4
+000b02 5286
+000b03 5045
+000b04 4145
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3346): macro 'CODE' called here
+000b05 0054      	CODE	IMEDD+6,"REPEAT"
+                 REPEA:
+000b06 940e 0adb 	CALL	AGAIN
+000b08 940e 0ab2 	CALL	BEGIN
+000b0a 940e 03a2 	CALL	TWOSL
+000b0c 940e 02fd 	CALL	SWAPP
+000b0e 940c 0212 	JMP		ISTOR
+                 
+                 ;   THEN	( A -- )
+                 ;	Terminate a conditional branch structure.
+                 
+000b10 1604
+000b11 5484
+000b12 4548
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3357): macro 'CODE' called here
+000b13 004e      	CODE	IMEDD+4,"THEN"
+                 THENN:
+000b14 940e 0ab2 	CALL	BEGIN
+000b16 940e 03a2 	CALL	TWOSL
+000b18 940e 02fd 	CALL	SWAPP
+000b1a 940c 0212 	JMP		ISTOR
+                 
+                 ;   AFT	( a -- a A )
+                 ;	Jump to THEN in a FOR-AFT-THEN-NEXT loop the first time through.
+                 
+000b1c 1622
+000b1d 4183
+000b1e 5446      	CODE	IMEDD+3,"AFT"
+                 AFT:
+000b1f 940e 02ee 	CALL	DROP
+000b21 940e 0af5 	CALL	AHEAD
+000b23 940e 0ab2 	CALL	BEGIN
+000b25 940c 02fd 	JMP		SWAPP
+                 
+                 ;   ELSE	( A -- A )
+                 ;	Start the false clause in an IF-ELSE-THEN structure.
+                 
+000b27 163a
+000b28 4584
+000b29 534c
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3377): macro 'CODE' called here
+000b2a 0045      	CODE	IMEDD+4,"ELSE"
+                 ELSEE:
+000b2b 940e 0af5 	CALL	AHEAD
+000b2d 940e 02fd 	CALL	SWAPP
+000b2f 940c 0b14 	JMP		THENN
+                 
+                 ;   WHILE	( a -- A a )
+                 ;	Conditional branch out of a BEGIN-WHILE-REPEAT loop.
+                 
+000b31 1650
+000b32 5785
+000b33 4948
+000b34 454c      	CODE	IMEDD+5,"WHILE"
+                 WHILE:
+000b35 940e 0ae6 	CALL	IFF
+000b37 940c 02fd 	JMP		SWAPP
+                 
+                 ;   ABORT"	( -- ; <string> )
+                 ;	Conditional abort with an error message.
+                 
+000b39 1664
+000b3a 4186
+000b3b 4f42
+000b3c 5452      	CODE	IMEDD+6,"ABORT"
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3395): warning: .cseg .db misalignment - padding zero byte
+000b3d 0022      	.DB		'"'
+                 ABRTQ:
+000b3e 940e 0147 	CALL	DOLIT
+000b40 088c      	.DW		ABORQ
+000b41 940e 0a56 	CALL	CALLC
+000b43 940e 0a94 	CALL	STRCQ
+000b45 940c 0055 	jmp INT_handler
+                 
+                 ;   $"	( -- ; <string> )
+                 ;	Compile an inline string literal.
+                 
+000b47 1674
+000b48 2482      	CODE	IMEDD+2,'$'
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3407): warning: .cseg .db misalignment - padding zero byte
+000b49 0022      	.DB		'"'
+                 STRQ:
+000b4a 940e 0147 	CALL	DOLIT
+000b4c 06bf      	.DW		STRQP
+000b4d 940e 0a56 	CALL	CALLC
+000b4f 940e 0a94 	CALL	STRCQ
+000b51 940c 0055 	jmp INT_handler
+                 
+                 ;   ."	( -- ; <string> )
+                 ;	Compile an inline string literal to be typed out at run time.
+                 
+000b53 1690
+000b54 2e82      	CODE	IMEDD+2,'.'
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3419): warning: .cseg .db misalignment - padding zero byte
+000b55 0022      	.DB		'"'
+                 DOTQ:
+000b56 940e 0147 	CALL	DOLIT
+000b58 06c5      	.DW		DOTQP
+000b59 940e 0a56 	CALL	CALLC
+000b5b 940e 0a94 	CALL	STRCQ
+000b5d 940c 0055 	jmp INT_handler
+                 
+                 ;; Name compiler
+                 
+                 ;   ?UNIQUE	( a -- a )
+                 ;	Display a warning message if the word already exists.
+                 
+000b5f 16a8
+000b60 3f07
+000b61 4e55
+000b62 5149
+000b63 4555      	CODE	7,"?UNIQUE"
+                 UNIQU:
+000b64 940e 02f5 	CALL	DUPP
+000b66 940e 07f9 	CALL	NAMEQ	;?name exists
+000b68 940e 0173 	CALL	QBRAN
+000b6a 0b77      	.DW		UNIQ1
+000b6b 940e 06c5 	CALL	DOTQP	;redefinitions are OK
+000b6d 2007
+000b6e 6572
+000b6f 6544
+000b70 2066      	.DB		7," reDef "	;but the user should be warned
+000b71 940e 0308 	CALL	OVER
+000b73 940e 0520 	CALL	COUNT
+000b75 940e 0689 	CALL	TYPES	;just in case its not planned
+                 UNIQ1:
+000b77 940c 02ee 	JMP		DROP
+                 
+                 ;   $,n	( na -- )
+                 ;	Build a new dictionary name using the string at na.
+                 
+000b79 16c0
+000b7a 2403
+000b7b 6e2c      	CODE	3,"$,n"
+                 SNAME:
+000b7c 940e 02f5 	CALL	DUPP
+000b7e 940e 02ac 	CALL	CAT	;?null input
+000b80 940e 0173 	CALL	QBRAN
+000b82 0ba8      	.DW		SNAM2
+000b83 940e 0b64 	CALL	UNIQU	;?redefinition
+                 ;	CALL	DOLIT	;保留作分析用途 20131104 sam
+                 ;	.DW		0		;保留作分析用途 20131104 sam
+000b85 940e 0396 	CALL	LAST
+000b87 940e 01af 	CALL	AT
+000b89 940e 0a44 	CALL	COMMA	;compile link 
+000b8b 940e 038b 	CALL	CPP
+000b8d 940e 01af 	CALL	AT
+000b8f 940e 0396 	CALL	LAST
+000b91 940e 01a4 	CALL	STORE	;save new nfa in LAST	
+000b93 940e 02f5 	CALL	DUPP
+000b95 940e 02ac 	CALL	CAT
+000b97 940e 03a2 	CALL	TWOSL	;na count/2
+000b99 940e 02d0 	CALL	TOR
+                 SNAME1:
+000b9b 940e 02f5 	CALL	DUPP
+000b9d 940e 01af 	CALL	AT
+000b9f 940e 0a44 	CALL	COMMA	;compile name
+000ba1 940e 09e9 	CALL	CELLP
+000ba3 940e 0159 	CALL 	DONXT
+000ba5 0b9b      	.DW		SNAME1
+000ba6 940c 02ee 	JMP		DROP
+                 SNAM2:
+000ba8 940e 06bf 	CALL	STRQP
+000baa 2005
+000bab 616e
+000bac 656d      	.DB		5," name"	;null input
+000bad 940c 0866 	JMP		ERROR
+                 
+                 ;; FORTH compiler
+                 
+                 ;   $COMPILE	( a -- )
+                 ;	Compile next word to code dictionary as a token or literal.
+                 
+000baf 16f4
+000bb0 2408
+000bb1 4f43
+000bb2 504d
+000bb3 4c49
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3487): macro 'CODE' called here
+000bb4 0045      	CODE	8,"$COMPILE"
+                 SCOMP:
+000bb5 940e 07f9 	CALL	NAMEQ
+000bb7 940e 03bc 	CALL	QDUP	;?defined
+000bb9 940e 0173 	CALL	QBRAN
+000bbb 0bcc      	.DW		SCOM2
+000bbc 940e 01b7 	CALL	IAT
+000bbe 940e 0147 	CALL	DOLIT
+000bc0 0080      	.DW		IMEDD
+000bc1 940e 031a 	CALL	ANDD	;?immediate
+000bc3 940e 0173 	CALL	QBRAN
+000bc5 0bc8      	.DW		SCOM1
+000bc6 940c 0192 	JMP		EXECU
+                 SCOM1:
+000bc8 940e 03a2 	CALL	TWOSL
+000bca 940c 0a56 	JMP		CALLC
+                 SCOM2:
+000bcc 940e 061c 	CALL	NUMBQ
+000bce 940e 0173 	CALL	QBRAN
+000bd0 0bd3      	.DW		SCOM3
+000bd1 940c 0a8b 	JMP		LITER
+                 SCOM3:
+000bd3 940c 0866 	JMP		ERROR	;error
+                 
+                 ;   OVERT	( -- )
+                 ;	Link a new word into the current vocabulary.
+                 
+000bd5 1760
+000bd6 4f05
+000bd7 4556
+000bd8 5452      	CODE	5,"OVERT"
+                 OVERT:
+000bd9 940e 0396 	CALL	LAST
+000bdb 940e 01af 	CALL	AT
+000bdd 940e 0386 	CALL	CNTXT
+000bdf 940c 01a4 	JMP		STORE
+                 
+                 ;   ;	( -- )
+                 ;	Terminate a colon definition.
+                 
+000be1 17ac
+000be2 3bc1      	CODE	IMEDD+COMPO+1,";"
+                 SEMIS:
+000be3 940e 0147 	CALL	DOLIT
+000be5 9508      	.DW		RETT
+000be6 940e 0a44 	CALL	COMMA
+000be8 940e 08b7 	CALL	LBRAC
+000bea 940c 0bd9 	JMP		OVERT
+                 
+                 ;   ]	( -- )
+                 ;	Start compiling the words in the input stream.
+                 
+000bec 17c4
+000bed 5d01      	CODE	1,"]"
+                 RBRAC:
+000bee 940e 0147 	CALL	DOLIT
+000bf0 176a      	.DW		SCOMP*2
+000bf1 940e 037a 	CALL	TEVAL
+000bf3 940c 01a4 	JMP		STORE
+                 
+                 ;   :	( -- ; <string> )
+                 ;	Start a new colon definition using next word as its name.
+                 
+000bf5 17da
+000bf6 3a01      	CODE	1,":"
+                 COLONN:
+000bf7 940e 0773 	CALL	TOKEN
+000bf9 940e 0b7c 	CALL	SNAME
+000bfb 940c 0bee 	JMP		RBRAC
+                 
+                 ;   IMMEDIATE	( -- )
+                 ;	Make the last compiled word an immediate word.
+                 
+000bfd 17ec
+000bfe 4909
+000bff 4d4d
+000c00 4445
+000c01 4149
+000c02 4554      	CODE	9,"IMMEDIATE"
+                 IMMED:
+000c03 940e 0147 	CALL	DOLIT
+000c05 0080      	.DW		IMEDD
+000c06 940e 0396 	CALL	LAST
+000c08 940e 01af 	CALL	AT
+000c0a 940e 01b7 	CALL	IAT
+000c0c 940e 0323 	CALL	ORR
+000c0e 940e 0396 	CALL	LAST
+000c10 940e 01af 	CALL	AT
+000c12 940c 0212 	JMP		ISTOR
+                 
+                 ;; Defining words
+                 
+                 ;   CREATE	( -- ; <string> )
+                 ;	Compile a new array entry without allocating code space.
+                 
+000c14 17fc
+000c15 4306
+000c16 4552
+000c17 5441
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3571): macro 'CODE' called here
+000c18 0045      	CODE	6,"CREATE"
+                 CREAT:
+000c19 940e 0773 	CALL	TOKEN
+000c1b 940e 0b7c 	CALL	SNAME
+000c1d 940e 0bd9 	CALL	OVERT
+000c1f 940e 0147  	CALL	DOLIT
+000c21 0344      	.DW		DOVAR
+000c22 940e 0a56 	CALL	CALLC
+000c24 940e 0390 	CALL	DPP
+000c26 940e 01af 	CALL	AT
+000c28 940c 0a44 	JMP		COMMA
+                 
+                 ;   CONSTANT	( n -- ; <string> )
+                 ;	Compile a constant.
+                 
+000c2a 182a
+000c2b 4308
+000c2c 4e4f
+000c2d 5453
+000c2e 4e41
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3586): macro 'CODE' called here
+000c2f 0054      	CODE	8,"CONSTANT"
+                 CONST:
+000c30 940e 0773 	CALL	TOKEN
+000c32 940e 0b7c 	CALL	SNAME
+000c34 940e 0bd9 	CALL	OVERT
+000c36 940e 0147  	CALL	DOLIT
+000c38 0344      	.DW		DOVAR
+000c39 940e 0a56 	CALL	CALLC
+000c3b 940c 0a44 	JMP		COMMA
+                 
+                 ;   VARIABLE	( -- ; <string> )
+                 ;	Compile a new variable uninitialized.
+                 
+000c3d 1856
+000c3e 5608
+000c3f 5241
+000c40 4149
+000c41 4c42
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3599): macro 'CODE' called here
+000c42 0045      	CODE	8,"VARIABLE"
+                 VARIA:
+000c43 940e 0c19 	CALL	CREAT
+000c45 940e 0147 	CALL	DOLIT
+000c47 0002      	.DW		2
+000c48 940c 0a35 	JMP		ALLOT
+                 
+                 ; 'CN EMIT return $250 $24A ( cfa nfa ) 
+                 ; 'CN XXXX return ERROR
+000c4a 187c
+000c4b 2703
+000c4c 4e43      	CODE	3,"'CN"
+                 TICKCN:
+000c4d 940e 0773 	CALL	TOKEN
+000c4f 940e 07f9 	CALL	NAMEQ	;?defined
+000c51 940e 03df 	CALL    DDUP
+000c53 940e 0173 	CALL	QBRAN
+000c55 0907      	.DW		TICK1
+000c56 940e 02ee     CALL    DROP  
+000c58 940c 0055 	jmp INT_handler				;yes, push code address
+                 TICK1CN:
+000c5a 940c 0866 	JMP	ERROR	;no, error
+                 
+000c5c 1896
+000c5d 4f08
+000c5e 4550
+000c5f 5f4e
+000c60 4e49
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3620): macro 'CODE' called here
+000c61 0054      	CODE	8,"OPEN_INT"
+                 OPEN_INT: 
+000c62 940e 0147 	CALL	DOLIT	
+000c64 005f      	.DW		$5F
+000c65 940e 02ac     CALL    CAT
+000c67 940e 0147 	CALL	DOLIT	
+000c69 0080      	.DW		$80
+000c6a 940e 0323 	CALL    ORR
+000c6c 940e 0147     CALL	DOLIT	
+000c6e 005f      	.DW		$5F
+000c6f 940e 02a1     CALL	CSTOR
+000c71 940e 0147 	CALL	DOLIT
+000c73 0064          .DW		$64
+000c74 940e 02d0 	CALL	TOR
+                 REDO:
+000c76 940e 0159 	CALL	DONXT   
+000c78 0c76          .DW		REDO
+                 
+000c79 940e 0147 	CALL	DOLIT	
+000c7b 005f      	.DW		$5F
+000c7c 940e 02ac     CALL    CAT
+000c7e 940e 0147 	CALL	DOLIT	
+000c80 007f      	.DW		$7F
+000c81 940e 031a 	CALL    ANDD
+000c83 940e 0147     CALL	DOLIT	
+000c85 005f      	.DW		$5F
+000c86 940e 02a1     CALL	CSTOR
+000c88 940c 0055 	jmp INT_handler
+                 	
+000c8a 18ba
+000c8b 5404
+000c8c 5345
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(168): warning: .cseg .db misalignment - padding zero byte
+E:\eforth-ide-win32-20131226\eforth-ide\328eforth\328eForth.asm(3649): macro 'CODE' called here
+000c8d 0054      	CODE	4,"TEST"
+000c8e 940e 0396 	CALL	LAST
+000c90 940e 01af 	CALL	AT
+000c92 940e 02f5 T1: CALL	DUPP
+000c94 940e 06e8 	CALL	DOT
+000c96 940e 03bc 	CALL	QDUP
+000c98 940e 0667 	CALL	KEY
+000c9a 940e 03b2 	CALL	BLANK
+000c9c 940e 041d 	CALL	EQUAL
+000c9e 940e 031a 	CALL	ANDD
+000ca0 940e 0173 	CALL	QBRAN
+000ca2 0cb0      	.DW		T2
+000ca3 940e 02f5 	CALL	DUPP
+000ca5 940e 0670 	CALL	SPACE	
+000ca7 940e 0974 	CALL	DOTID
+000ca9 940e 09ef 	CALL	CELLM
+000cab 940e 01b7 	CALL	IAT
+000cad 940e 0183 	CALL	BRAN
+000caf 0c92      	.DW		T1
+000cb0 940c 0055 T2:	jmp INT_handler
+                 
+                 ;============================================================================
+                 
+                 .EQU	LASTN	=	_LINK*2	;last name address in name dictionary
+                 
+                 .EQU	DTOP	=	$140	;next available memory in name dictionary
+                 .EQU	CTOP	=	pc*2	;next available memory in code dictionary
+                 ;===============================================================
+
+
+RESOURCE USE INFORMATION
+------------------------
+
+Notice:
+The register and instruction counts are symbol table hit counts,
+and hence implicitly used resources are not counted, eg, the
+'lpm' instruction without operands implicitly uses r0 and z,
+none of which are counted.
+
+x,y,z are separate entities in the symbol table and are
+counted separately from r26..r31 here.
+
+.dseg memory usage only counts static data declared with .byte
+
+ATmega328P register use summary:
+r0 :   7 r1 :   4 r2 :   6 r3 :   3 r4 :   4 r5 :   2 r6 :   9 r7 :   3 
+r8 :   1 r9 :   0 r10:   1 r11:   1 r12:   0 r13:   0 r14:  10 r15:   8 
+r16:  20 r17:  13 r18:  21 r19:  20 r20:  13 r21:   8 r22:   4 r23:   0 
+r24: 144 r25:  73 r26:  45 r27:  29 r28:   4 r29:   2 r30:  32 r31:  17 
+x  :   5 y  : 120 z  :  21 
+Registers used: 31 out of 35 (88.6%)
+
+ATmega328P instruction use summary:
+.lds  :   0 .sts  :   0 adc   :  10 add   :   7 adiw  :  27 and   :   2 
+andi  :   1 asr   :   2 bclr  :   0 bld   :   0 brbc  :   0 brbs  :   1 
+brcc  :   0 brcs  :   1 break :   0 breq  :   3 brge  :   2 brhc  :   0 
+brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 brlt  :   1 brmi  :   0 
+brne  :   3 brpl  :   0 brsh  :   0 brtc  :   0 brts  :   0 brvc  :   0 
+brvs  :   0 bset  :   0 bst   :   0 call  : 220 cbi   :   0 cbr   :   0 
+clc   :   1 clh   :   0 cli   :   0 cln   :   0 clr   :  19 cls   :   0 
+clt   :   0 clv   :   0 clz   :   0 com   :   2 cp    :   3 cpc   :   6 
+cpi   :   0 cpse  :   0 dec   :   1 eor   :   2 fmul  :   0 fmuls :   0 
+fmulsu:   0 icall :   0 ijmp  :   0 in    :   3 inc   :   1 jmp   : 127 
+ld    :  86 ldd   :   2 ldi   :  20 lds   :   3 lpm   :  15 lsl   :   7 
+lsr   :   1 mov   :   7 movw  :  29 mul   :   4 muls  :   0 mulsu :   0 
+neg   :   0 nop   :   0 or    :   4 ori   :   0 out   :   7 pop   :  26 
+push  :  26 rcall : 791 ret   :   3 reti  :   1 rjmp  : 127 rol   :  11 
+ror   :   4 sbc   :   5 sbci  :   1 sbi   :   0 sbic  :   0 sbis  :   0 
+sbiw  :  17 sbr   :   0 sbrc  :   1 sbrs  :   2 sec   :   0 seh   :   0 
+sei   :   0 sen   :   0 ser   :   2 ses   :   0 set   :   0 sev   :   0 
+sez   :   0 sleep :   0 spm   :   2 st    :  42 std   :   2 sts   :   5 
+sub   :   3 subi  :   3 swap  :   0 tst   :   2 wdr   :   0 
+Instructions used: 56 out of 113 (49.6%)
+
+ATmega328P memory use summary [bytes]:
+Segment   Begin    End      Code   Data   Used    Size   Use%
+---------------------------------------------------------------
+[.cseg] 0x000000 0x007fe2   4118   2118   6236   32768  19.0%
+[.dseg] 0x000100 0x000100      0      0      0    2048   0.0%
+[.eseg] 0x000000 0x000000      0      0      0    1024   0.0%
+
+Assembly complete, 0 errors, 107 warnings
