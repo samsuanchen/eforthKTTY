@@ -3,6 +3,7 @@
 //var othercomponent=Require("other"); 
 var statusbar = React.createClass({
   getInitialState: function() {
+    return {};
   },
   render: function() { var stack, words, hideText, match;
   	stack='empty';

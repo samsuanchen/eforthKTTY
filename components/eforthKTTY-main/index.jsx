@@ -11,14 +11,13 @@ var recieved, lastByte, lastText, log='', ok, getOk;
 var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
-var ACK_KEY=6;
+var RFC_KEY=6;
+var RFI_KEY=5;
 var timer, cmd, lastCmd, error=0;
 var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({
   getInitialState: function() {
-    var state=nodeRequire('./settings.js');
-    state.connecting=false;
-    return state;  
+    return nodeRequire('./settings.js'); 
   }, 
   render: function() {
     var connecting=this.state.connecting;
@@ -52,14 +51,17 @@ var main = React.createClass({
   onPortChange:function(port) {
     if (this.state.connecting)
       this.closePort();
-    this.state.port=port;
-    conn.saveState(this.state);
+    var s=this.state;
+    s.port=port;
+    s.connecting=false;
+    conn.saveState(s);
   },
   onBaudChange:function(baud) {
     if (this.state.connecting)
-      this.closePort();
-    this.state.baud=baud;
-    conn.saveState(this.state);
+    var s=this.state;
+    s.baud=baud;
+    s.connecting=false;
+    conn.saveState(s);
   },
   onChangeDir:function(dir) {
     this.state.system=dir;
@@ -103,7 +105,9 @@ var main = React.createClass({
       // use blue to color the last command
       lastText=lib.markInp(lastText,lastCmd);
     }
-    if (lastByte===ACK_KEY) { // ready to send next command
+    if (lastByte===RFC_KEY||// ready for command
+        lastByte===RFI_KEY  // ready for input
+    ) {
       recieved=new Buffer(0);
       console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
       if (!log) {
@@ -113,10 +117,10 @@ var main = React.createClass({
           getOk=true;
         },10);
       }
-      if (!ok && getOk) {
+      if (!ok && getOk)
         ok=lastText;
-      }
-      if(ok)lastText=lib.markOk(lastText,ok);
+      if(ok)
+        lastText=lib.markOk(lastText,ok);
       lastText=lastText.replace(/^(\r\n)+/,'')
                .replace(/(\r\n)+\r\x06$/,'\r\n')
                .replace(/(\r\n)+/g,'\r\n');
@@ -180,9 +184,11 @@ var main = React.createClass({
     }
   },
   sendNextCommand:function() {
+    if (lastByte===RFI_KEY)
+      return;
     if (error) {
-        lines = [];
-        return;
+      lines = [];
+      return;
     }
     if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
       cmd=lines[lineIndex++];
