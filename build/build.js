@@ -12093,7 +12093,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
           onClick:this.sendcmd}, "sendCmd"),
         React.DOM.textarea( {className:"inputCmdBox",
           onKeyDown:this.cmdKeyDown,
-          onPaste:this.props.onPasted,
+          onPaste:this.sendPasted,
           cols:"80",
           rows:"1",
           ref:"inputcmd",
@@ -12172,6 +12172,8 @@ var inputarea = React.createClass({displayName: 'inputarea',
     };
   },
   sendcmd:function() {
+    if (!this.props.connecting)
+      return;
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
     cmd=$inputcmd.value;
     if (cmdLine.length && (lineIndex=cmdLine.indexOf(cmd))>=0) {
@@ -12183,7 +12185,14 @@ var inputarea = React.createClass({displayName: 'inputarea',
     this.setState({cmd:''});
     $inputcmd.value='';
   },
+  sendPasted:function(e) {
+    if (!this.props.connecting)
+      return;
+    this.props.onPasted(e);
+  },
   sendfile:function() {
+    if (!this.props.connecting)
+      return;
     $inputfile=$inputfile||this.refs.inputfile.getDOMNode();
     var file=this.props.system+'/'+$inputfile.value.trim();
     this.props.onXfer(file);
@@ -12272,7 +12281,8 @@ var controlpanel = React.createClass({displayName: 'controlpanel',
     return (
       React.DOM.div( {className:"controlpanel"}, 
         inputarea(
-          {system:    this.props.system,
+          {connecting:this.props.connecting,
+          system:    this.props.system,
           onPasted:  this.props.onPasted,
           onXfer:    this.props.onXfer,
           lineDelay: this.props.lineDelay,

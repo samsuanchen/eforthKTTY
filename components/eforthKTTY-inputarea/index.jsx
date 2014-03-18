@@ -16,7 +16,7 @@ var inputarea = React.createClass({
           onClick={this.sendcmd}>sendCmd</button>
         <textarea className="inputCmdBox"
           onKeyDown={this.cmdKeyDown}
-          onPaste={this.props.onPasted}
+          onPaste={this.sendPasted}
           cols='80'
           rows='1'
           ref="inputcmd"
@@ -95,6 +95,8 @@ var inputarea = React.createClass({
     };
   },
   sendcmd:function() {
+    if (!this.props.connecting)
+      return;
     $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
     cmd=$inputcmd.value;
     if (cmdLine.length && (lineIndex=cmdLine.indexOf(cmd))>=0) {
@@ -106,7 +108,14 @@ var inputarea = React.createClass({
     this.setState({cmd:''});
     $inputcmd.value='';
   },
+  sendPasted:function(e) {
+    if (!this.props.connecting)
+      return;
+    this.props.onPasted(e);
+  },
   sendfile:function() {
+    if (!this.props.connecting)
+      return;
     $inputfile=$inputfile||this.refs.inputfile.getDOMNode();
     var file=this.props.system+'/'+$inputfile.value.trim();
     this.props.onXfer(file);

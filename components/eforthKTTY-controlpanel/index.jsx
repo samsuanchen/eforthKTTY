@@ -10,6 +10,7 @@ var controlpanel = React.createClass({
     return (
       <div className='controlpanel'>
         <inputarea
+          connecting={this.props.connecting}
           system    ={this.props.system}
           onPasted  ={this.props.onPasted}
           onXfer    ={this.props.onXfer}
