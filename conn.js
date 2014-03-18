@@ -44,6 +44,9 @@ var readFile=function(fileName) {
 	return fs.readFileSync(fileName).toString().split('\r\n');
 }
 var saveState=function(state) {
+	state.connecting=false;
+	state.log='';
+	state.lineDelay=300;
 	var s="module.exports="+JSON.stringify(state,undefined,' ');
 	return fs.writeFileSync("settings.js",s);
 }

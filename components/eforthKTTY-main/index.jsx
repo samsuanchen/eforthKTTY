@@ -37,6 +37,8 @@ var main = React.createClass({
           onBaudChange={this.onBaudChange}
           onChangeDir={this.onChangeDir}
           onChangeLineDelay={this.onChangeLineDelay}
+          cmd={this.state.cmd}
+          file={this.state.file}
           port      ={this.state.port}
           baud      ={this.state.baud}
           onExecute ={this.sendCommand}
@@ -99,9 +101,8 @@ var main = React.createClass({
           return '<error>'+M+'<\/error>';
         });;
     if(lastCmd) {
-      // check if last command needs to be hidden
-      if (lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY)
-        hide=true;
+      // flag to check if last command needs to be hidden
+      hide = lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY;
       // use blue to color the last command
       lastText=lib.markInp(lastText,lastCmd);
     }
@@ -163,10 +164,9 @@ var main = React.createClass({
     if (j=lib.utf8StrTooLong(cmd)) {
       this.Error_00(j,cmd);
       return;
-    }
-    this.setState({'cmd':cmd});
+    };
     // C. if hidden cmd then adjust for compiling mode
-    if (cmd=== hiddenCmd&&ok&&!log.match(/ok>\r\n$/))
+    if (cmd=== hiddenCmd&&ok&&!log.match(/ok>\r?\n$/))
       cmd=bHiddenCmd;
     // D. current cmd processing
     conn.doWritePort(cmd);
@@ -174,29 +174,26 @@ var main = React.createClass({
     lastCmd=cmd;
     if (lineDelay)
       timer=setTimeout(this.sendNextCommand,lineDelay);
-    // F. hidden cmd processing
     if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
+    this.setState({'cmd':cmd});
     if (!lines||lineIndex>=lines.length) {
+    // F. hidden cmd processing
       lines=[hiddenCmd];
       lineIndex=0;
-    }
+    };
   },
   sendNextCommand:function() {
-    if (error) {
-        lines = [];
+    if (error               ||
+        !lines              ||
+        lines===[ hiddenCmd]||
+        lines===[bHiddenCmd]||
+        lineIndex>=lines.length)
         return;
-    }
-    if (lines&&lines!=[hiddenCmd]&&lines!=[bHiddenCmd]&&lineIndex<lines.length) {
-      cmd=lines[lineIndex++];
-      if (cmd!==lastCmd) {
-        console.log("line",lineIndex,cmd);
-        this.sendCommand(cmd);
-      }
-    } else if (lineIndex) {
-      var file=fileName?fileName:'pasted lines';
-      console.log(Date(),this.state.port,"end of",file);
-      fileName='';
-    }
+    cmd=lines[lineIndex++];
+    if (cmd!==lastCmd) {
+      //console.log("line",lineIndex,cmd);
+      this.sendCommand(cmd);
+    };
   },
   sendPasted: function (event) {
     var target=event.target;
@@ -215,7 +212,7 @@ var main = React.createClass({
     console.log(Date(),this.state.port,"sendFile:",file);
     fileName=file;
     lines=conn.readFile(fileName);
-    console.log(Date(),this.state.port,"start of",fileName);
+  //console.log(Date(),this.state.port,"start of",fileName);
     lineIndex=0;
     this.sendCommand(lines[lineIndex++]);
   },
