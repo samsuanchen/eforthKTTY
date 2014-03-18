@@ -108,7 +108,6 @@ var main = React.createClass({
     }
     if (lastByte===ACK_KEY) { // ready to send next command
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
       if (!log) {
         var that=this;
         setTimeout( function() {
@@ -123,13 +122,13 @@ var main = React.createClass({
       lastText=lastText.replace(/^(\r\n)+/,'')
                .replace(/(\r\n)+\r\x06$/,'\r\n')
                .replace(/(\r\n)+/g,'\r\n');
-      if (!hide) {
-        log+=lastText;
-        hideText='';
-      } 
-      else {
+      if (hide) {
         hideText=lastText;
         hide=false;
+      } else {
+        console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
+        log+=lastText;
+        hideText='';
       }
       lastText='';
       clearTimeout(timer);

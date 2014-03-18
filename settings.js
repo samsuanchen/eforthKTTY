@@ -1,9 +1,9 @@
 module.exports={
  "cmd": "SEE WORDS",
  "file": "test.f",
- "port": "COM33",
+ "port": "COM18",
  "baud": 19200,
- "connecting": true,
+ "connecting": false,
  "system": "328eforth",
  "lineDelay": 300,
  "log": "",

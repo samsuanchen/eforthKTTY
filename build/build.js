@@ -11948,7 +11948,6 @@ var main = React.createClass({displayName: 'main',
     }
     if (lastByte===ACK_KEY) { // ready to send next command
       recieved=new Buffer(0);
-      console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
       if (!log) {
         var that=this;
         setTimeout( function() {
@@ -11963,13 +11962,13 @@ var main = React.createClass({displayName: 'main',
       lastText=lastText.replace(/^(\r\n)+/,'')
                .replace(/(\r\n)+\r\x06$/,'\r\n')
                .replace(/(\r\n)+/g,'\r\n');
-      if (!hide) {
-        log+=lastText;
-        hideText='';
-      } 
-      else {
+      if (hide) {
         hideText=lastText;
         hide=false;
+      } else {
+        console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
+        log+=lastText;
+        hideText='';
       }
       lastText='';
       clearTimeout(timer);
@@ -12080,12 +12079,24 @@ var ENTER_KEY=13, ESCAPE_KEY=27, CONTROL_Q_KEY=17, CONTROL_Z_KEY=26;
 var CONTROL_KEY=[CONTROL_Q_KEY, CONTROL_Z_KEY];
 var UP_KEY=38, DOWN_KEY=40
 var $inputcmd, $inputfile, cmd, cmdLine=[], lineIndex=0;
-var fileList;
+var fs=nodeRequire("fs")
+var fileList, fileIndex;
 var inputarea = React.createClass({displayName: 'inputarea',
   getInitialState: function() {
     return {};
   },
   render: function() {
+    fileList=[];
+    fs.readdirSync(this.props.system).forEach(function(f){
+      if(f.match(/\.[fF]$/))fileList.push(f);
+    });
+    if(fileList.length)
+      fileList=fileList.sort();
+    fileIndex=fileList.indexOf(this.props.file);
+    if(fileList.length&&fileIndex<0) {
+      fileIndex=0;
+      this.state.file=fileList[fileIndex];
+    };
     return (
       React.DOM.div(null, 
         React.DOM.button( {className:"sendCmdBtn",
@@ -12164,12 +12175,28 @@ var inputarea = React.createClass({displayName: 'inputarea',
       this.props.onExecute(String.fromCharCode(key));
     };
   },
+  prevFile: function () {
+    if (fileIndex) {
+      $inputfile=$inputfile||this.refs.inputfile.getDOMNode();
+      $inputfile.value=fileList[--fileIndex];
+    }
+  },
+  nextFile: function () {
+    if (fileIndex<fileList.length-1) {
+      $inputfile=$inputfile||this.refs.inputfile.getDOMNode();
+      $inputfile.value=fileList[++fileIndex];
+    }
+  },
   fileKeyDown: function (event) {
-    fileList=fs.readdirSync(this.props.system);
-
     var key=event.keyCode;
     if (key === ENTER_KEY) {
       this.sendfile();
+    } else if (key===UP_KEY) {
+      this.prevFile();
+      return;
+    } else if (key===DOWN_KEY) {
+      this.nextFile();
+      return;
     };
   },
   sendcmd:function() {
@@ -30982,9 +31009,9 @@ require.register("eforthKTTY/settings.js", function(exports, require, module){
 module.exports={
  "cmd": "SEE WORDS",
  "file": "test.f",
- "port": "COM33",
+ "port": "COM18",
  "baud": 19200,
- "connecting": true,
+ "connecting": false,
  "system": "328eforth",
  "lineDelay": 300,
  "log": "",
