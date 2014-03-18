@@ -17,17 +17,13 @@ var utf8StrTooLong=function(str){
   return j;
 }
 var markInp=function(text,inp){
-  var p=RegExp('^'+inp
-    .replace(/\\/g,'\\\\').replace(/\t/g," "  )
-    .replace(/\|/g,'\\|' ).replace(/\'/g,"\\'")
-    .replace(/\./g,'\\.' ).replace(/\?/g,'\\?')
-    .replace(/\+/g,'\\+' ).replace(/\*/g,'\\*')
-    .replace(/\^/g,'\\^' ).replace(/\$/g,'\\$')
-    .replace(/\[/g,'\\[' ).replace(/\]/g,'\\]')
-    .replace(/\(/g,'\\(' ).replace(/\)/g,'\\)')
-    .replace(/\{/g,'\\{' ).replace(/\}/g,'\\}')
-  );
-  return text.replace(p,'<inp>'+inp+'</inp>');
+  var n=inp.length;
+  var h=text.substr(0,n);
+  var t=text.substr(n);
+  if (h===inp) {
+    text='<inp>'+h.replace(/</g,'&lt;')+'</inp>'+t.replace(/</g,'&lt;');
+  }
+  return text;
 };
 var markOk=function(text,ok){
   var p=RegExp(ok+'$');

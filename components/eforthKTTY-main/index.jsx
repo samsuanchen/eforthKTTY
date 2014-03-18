@@ -91,9 +91,10 @@ var main = React.createClass({
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
     lastText=recieved.toString()
-        .replace(/</g,'&lt;')
-        .replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
+        .replace(/(\r?\n)+(ERROR#\d+)/mg,function(M){
           error++;
+          lines=[];
+          lineIndex=0;
           return '<error>'+M+'<\/error>';
         });;
     if(lastCmd) {
@@ -227,6 +228,7 @@ var main = React.createClass({
     log+=lib.markOk(ok,ok);
     this.setState({'lastText':''});
     lines = [];
+    lineIndex=0;
     this.sendCommand(hiddenCmd);
   }
 });
