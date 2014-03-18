@@ -49,7 +49,7 @@ D13. listBox to select file.
 D14. lineDelay to wait for next command.
 D15. include README.txt into zip.
 
->>> E. to report bugs:
+>>> E. report bugs:
 
 E01. email samsuanchem@gmail.com
-E02. call 0920-714-028 ���n
+E02. call 0920-714-028

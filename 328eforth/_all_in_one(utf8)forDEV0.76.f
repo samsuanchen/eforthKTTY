@@ -76,8 +76,8 @@
           THEN EMIT
       NEXT DROP
   NEXT DROP BASE ! ;
-:  KEY $06 EMIT  KEY ; \ 送出 ACN 碼 以受理 按鍵輸入
-: ?KEY $06 EMIT ?KEY ; \ 送出 ACN 碼 以受理 按鍵輸入
+:  KEY $05 EMIT  KEY ; \ 送出 RFI 碼 以受理 按鍵輸入
+: ?KEY $05 EMIT ?KEY ; \ 送出 RFI 碼 以受理 按鍵輸入
 : CONSTANT CONSTANT  FLUSH ;
 \ ===================================================
 \ 以下為毛翔先生2012/8/23於德霖技術學院202實驗室創作

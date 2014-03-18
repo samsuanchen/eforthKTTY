@@ -11,8 +11,9 @@ var recieved, lastByte, lastText, log='', ok, getOk;
 var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
-var RFC_KEY=6;
-var RFI_KEY=5;
+var RFC_KEY=6; // ready for command
+var RFI_KEY=5; // ready for input
+var waitingForInput=false;
 var timer, cmd, lastCmd, error=0;
 var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({
@@ -92,12 +93,7 @@ var main = React.createClass({
     lastByte=bytes[bytes.length-1];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
-    lastText=recieved.toString()
-        .replace(/</g,'&lt;')
-        .replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
-          error++;
-          return '<error>'+M+'<\/error>';
-        });;
+    lastText=recieved.toString();
     if(lastCmd) {
       // check if last command needs to be hidden
       if (lib.firstOutputByte(lastText,lastCmd)===HIDE_KEY)
@@ -105,6 +101,10 @@ var main = React.createClass({
       // use blue to color the last command
       lastText=lib.markInp(lastText,lastCmd);
     }
+    lastText=lastText.replace(/(\r\n)+(ERROR#\d+)/mg,function(M){
+          error++;
+          return '<error>'+M+'<\/error>';
+    });;
     if (lastByte===RFC_KEY||// ready for command
         lastByte===RFI_KEY  // ready for input
     ) {
@@ -177,15 +177,18 @@ var main = React.createClass({
     if (lineDelay)
       timer=setTimeout(this.sendNextCommand,lineDelay);
     // F. hidden cmd processing
-    if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
+    if (waitingForInput||cmd===hiddenCmd||cmd===bHiddenCmd)
+      return;
     if (!lines||lineIndex>=lines.length) {
       lines=[hiddenCmd];
       lineIndex=0;
     }
   },
   sendNextCommand:function() {
-    if (lastByte===RFI_KEY)
+    if (lastByte===RFI_KEY) {
+      waitingForInput=true;
       return;
+    }
     if (error) {
       lines = [];
       return;
