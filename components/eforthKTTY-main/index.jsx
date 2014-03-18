@@ -65,8 +65,8 @@ var main = React.createClass({
     this.state.system=dir;
     conn.saveState(this.state);
   },
-  onChangeLineDelay:function(lineDelay) {
-    this.state.lineDelay=lineDelay;
+  onChangeLineDelay:function(delay) {
+    this.state.lineDelay=lineDelay=delay;
     conn.saveState(this.state);
   },
   onPortOpen:function(e) {
@@ -90,6 +90,7 @@ var main = React.createClass({
     lastByte=bytes[bytes.length-1];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
+    error=0;
     lastText=recieved.toString()
         .replace(/(\r?\n)+(ERROR#\d+)/mg,function(M){
           error++;

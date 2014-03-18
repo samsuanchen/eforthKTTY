@@ -11905,8 +11905,8 @@ var main = React.createClass({displayName: 'main',
     this.state.system=dir;
     conn.saveState(this.state);
   },
-  onChangeLineDelay:function(lineDelay) {
-    this.state.lineDelay=lineDelay;
+  onChangeLineDelay:function(delay) {
+    this.state.lineDelay=lineDelay=delay;
     conn.saveState(this.state);
   },
   onPortOpen:function(e) {
@@ -11930,6 +11930,7 @@ var main = React.createClass({displayName: 'main',
     lastByte=bytes[bytes.length-1];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
+    error=0;
     lastText=recieved.toString()
         .replace(/(\r?\n)+(ERROR#\d+)/mg,function(M){
           error++;
@@ -12122,7 +12123,7 @@ var inputarea = React.createClass({displayName: 'inputarea',
     $inputcmd.focus();
   },
   changeLineDelay: function (e) {
-    this.props.onChangeLineDelay(e.target.value.trim());
+    this.props.onChangeLineDelay(parseInt(e.target.value));
   },
   changeDir: function (e) {
     this.props.onChangeDir(e.target.value.trim());
@@ -30974,14 +30975,14 @@ module.exports={
 });
 require.register("eforthKTTY/settings.js", function(exports, require, module){
 module.exports={
- "cmd": "SEE WORDS",
+ "cmd": "     FOR R@ PICK .",
  "port": "COM33",
  "baud": 19200,
- "connecting": false,
+ "connecting": true,
  "system": "328eforth",
- "lineDelay": 300,
- "log": "",
- "lastText": ""
+ "lineDelay": 200,
+ "log": "3 秒內按 ESC 鍵可進入符式系統  3\u0006\b\b 2\u0006\b\b 1\u0006\b\b 0\u0006\b\b\r\n328eForth DEV0.76\r\n <ok>好</ok>\r\n",
+ "lastText": "ANEW test.f 好\r\n\r\u0006\\ @ - 8 好\r\n\r\u0006    NEXT BASE ! ; t underflow\r\n\r\u0006:  ABORT)\r\n\r\u0006  IABLE V FLUSH 500 V ! IABLE?<error>\r\nERROR#02</error> : 遇未定義指令!\r\n請按 ESC 繼續 .\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007.\u0007"
 }
 });
 

@@ -45,7 +45,7 @@ var inputarea = React.createClass({
     $inputcmd.focus();
   },
   changeLineDelay: function (e) {
-    this.props.onChangeLineDelay(e.target.value.trim());
+    this.props.onChangeLineDelay(parseInt(e.target.value));
   },
   changeDir: function (e) {
     this.props.onChangeDir(e.target.value.trim());
