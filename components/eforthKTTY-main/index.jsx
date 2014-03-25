@@ -8,6 +8,7 @@ var statusbar=Require("statusbar");
 var conn=Require("eforthKTTY/conn");
 var lib=Require("eforthKTTY/lib");
 var recieved, lastByte, lastText, log='', ok, getOk;
+var iLast;
 var HIDE_KEY=1;
 var hiddenCmd='1 EMIT CR .S CR WORDS';
 var bHiddenCmd, hide, hideText;
@@ -17,6 +18,8 @@ var fileName, lines, lineIndex, lineDelay;
 var main = React.createClass({
   getInitialState: function() {
     var state=nodeRequire('./settings.js');
+    state.log='';
+    state.lastText='';
     state.connecting=false;
     return state;  
   }, 
@@ -89,7 +92,12 @@ var main = React.createClass({
     window.onclose=this.closePort;
   },
   onPortRecievedData:function(bytes) {
+    for (iLast=bytes.length-1;iLast>=0;iLast--)
+      if (bytes[iLast]===ACK_KEY)
+        break;
     lastByte=bytes[bytes.length-1];
+    if (iLast>=0)
+      lastByte=bytes[iLast];
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
     error=0;
@@ -107,13 +115,14 @@ var main = React.createClass({
       lastText=lib.markInp(lastText,lastCmd);
     }
     if (lastByte===ACK_KEY) { // ready to send next command
-      recieved=new Buffer(0);
+      recieved=bytes.slice(iLast+1);
+      lastText=lastText.substr(0,lastText.length-recieved.length);
       if (!log) {
         var that=this;
         setTimeout( function() {
           that.sendCommand('');
           getOk=true;
-        },10);
+        },4000);
       }
       if (!ok && getOk) {
         ok=lastText;
@@ -131,10 +140,11 @@ var main = React.createClass({
         hideText='';
       }
       lastText='';
+      this.setState({'lastText':lastText,'log':log});
       clearTimeout(timer);
       this.sendNextCommand();
-    }
-    if (!hide) this.setState({'lastText':lastText,'log':log});
+    } else if (!hide)
+      this.setState({'lastText':lastText});
   },
   onPortError:function(e) {
     console.log(Date(),this.state.port,"error",e);
@@ -170,11 +180,13 @@ var main = React.createClass({
     // D. current cmd processing
     conn.doWritePort(cmd);
     // E. remember current cmd
-    lastCmd=cmd;
+    lastCmd=cmd.replace(/\t/g,' ');
+    if (cmd=== hiddenCmd||cmd===bHiddenCmd) {
+      timer=setTimeout(this.sendNextCommand,500);
+      return;
+    }
     if (lineDelay)
       timer=setTimeout(this.sendNextCommand,lineDelay);
-    if (cmd=== hiddenCmd||cmd===bHiddenCmd) return;
-    this.setState({'cmd':cmd});
     if (!lines||lineIndex>=lines.length) {
     // F. hidden cmd processing
       lines=[hiddenCmd];

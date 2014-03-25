@@ -4,7 +4,8 @@
 }
 .inputCmdBox{
 	margin-left: 1px;
-	margin-top: 1px
+	margin-top: 1px;
+	height:46px;
 }
 .sendFileBtn{
 	margin-left: 1px;

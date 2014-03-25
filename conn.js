@@ -44,10 +44,12 @@ var readFile=function(fileName) {
 	return fs.readFileSync(fileName).toString().split('\r\n');
 }
 var saveState=function(state) {
-	state.connecting=false;
-	state.log='';
-	state.lineDelay=300;
-	var s="module.exports="+JSON.stringify(state,undefined,' ');
+	var s={}
+	for (var i in state) s[i]=state[i];
+	s.connecting=false;
+	s.log='';
+	s.lineDelay=300;
+	s="module.exports="+JSON.stringify(s,undefined,' ');
 	return fs.writeFileSync("settings.js",s);
 }
 module.exports={

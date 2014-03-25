@@ -28,6 +28,7 @@ var inputarea = React.createClass({
         <button className="sendCmdBtn"
           onClick={this.sendcmd}>sendCmd</button>
         <textarea className="inputCmdBox"
+          onKeyUp={this.cmdKeyUp}
           onKeyDown={this.cmdKeyDown}
           onPaste={this.sendPasted}
           cols='80'
@@ -77,6 +78,11 @@ var inputarea = React.createClass({
       $inputcmd=$inputcmd||this.refs.inputcmd.getDOMNode();
       c= lineIndex===cmdLine.length?cmd:cmdLine[lineIndex];
       $inputcmd.value=c;
+    }
+  },
+  cmdKeyUp: function (event) {
+    if (event.keyCode === ENTER_KEY) {
+      event.target.value='';
     }
   },
   cmdKeyDown: function (event) {

@@ -2,15 +2,29 @@ eforthKTTY -- node webkit serialport 328eforth ksana tty
 
 >>> A. starting eforthKTTY
 
-A01. DblClick run.bat or nw.exe to start eforthKTTY.
+A01. Unzip the content of eforthKTTY-win32-2014-03-25.zip
+     to a working directory.
 
-A02. Click 'connect' to connect specified serial port.
+A02. In the working directory, DblClick nw.exe to show
+     eforthKTTY.
+
+A03. Click 'connect' buttun to connect specified serial port.
 
 >>> B. note:
 
-B01. if 328eforth (or any other forth) gives '6 EMIT' to
-   tell efothKTTY the port is ready to recieve next input command, eforthKTTY will send padding command lines as
-   soon as possible.
+B01. While sending a file or pasting many lines into empty
+     command box, if 328eforth (or any other forth) gives '6
+     EMIT' telling efothKTTY the port is ready to recieve
+     command, eforthKTTY will send next command (a line of
+     forth words) as soon as possible.
+
+B02. If lineDelay=n is non-zero, eforthKTTY will wait
+     '6 EMIT' at most n ms before sending next command.
+     Be sure n ms is enough to finish previous command.
+
+B03. If lineDelay=0, eforthKTTY will never send next command
+     until '6 EMIT', so that we have enough long time to
+     finish previous command.
 
 >>> C. features:
 
