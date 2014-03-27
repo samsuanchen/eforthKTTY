@@ -6,7 +6,7 @@
 \ 增 variables .hex .HEAD .BODY
 \ 改 words (SEE)
 \ --------------------------------------------------- 328eForthDEV0.76x01
-: NOOP ;     FLUSH
+: NOOP ; FLUSH
 ' NOOP 2/  ' ERR_HANDLING 2+ I!  \ 注意! 修改 ERR_HANDLING
 ' NOOP 2/  ' ALLOW_BOOT   2+ I!  \ 注意! 修改 ALLOW_BOOT
 \ 使 .OK 回應 BIG5 "好" 或 UTF8 "好"
@@ -41,7 +41,7 @@
      LAST    !
   THEN ;
 : Forget ( <name> -- )
-  'CN  ( cfa nfa ) (forget) ( cfa ) DROP ;
+  'CN  ( cfa nfa ) (forget) ( cfa ) DROP ; REMEMBER
 : doTABLE ( -- a ) R> 2* ;
 : ANEW ( <name> -- ) TOKEN ( a ) NAME? ?DUP
   IF ( cfa nfa ) DUP LAST ! CONTEXT ! ( cfa )
@@ -71,8 +71,8 @@
   FOR CR DUP 5 U.R SPACE $F
       FOR COUNT 3 U.R
       NEXT SPACE DUP $10 - $F
-      FOR COUNT DUP BL < OVER $FE > OR
-	  IF DROP [ CHAR _ ] LITERAL
+      FOR ICOUNT DUP BL < OVER $FE > OR
+          IF DROP [ CHAR _ ] LITERAL
           THEN EMIT
       NEXT DROP
   NEXT DROP BASE ! ;
@@ -285,9 +285,9 @@ $9508 CONSTANT INS_RET
   IF ( flsAdr ramAdr ramNch )
      FOR AFT ( flsAdr ramAdr ) OVER IC@ OVER C@ XOR
 \ --------------------------------------------------- 328eForthDEV0.76x12
-             IF R> 2DROP 0 DUP >R 1- SWAP
-             THEN SWAP 1+ SWAP 1+
-	 THEN
+            IF R> 2DROP 0 DUP >R 1- SWAP
+            THEN SWAP 1+ SWAP 1+
+         THEN
      NEXT
   ELSE 2DROP DUP XOR
   THEN ;
@@ -298,7 +298,7 @@ $9508 CONSTANT INS_RET
              OVER IC@ OVER C@ XOR
              IF R> 2DROP 0 DUP >R 1- SWAP
              THEN SWAP 1+ SWAP 1+
-	 THEN
+         THEN
      NEXT
   THEN DROP ;
 \ : TEST1 BL WORD $" abcde" ICOUNT DROP MATCH . ; TEST1 abc

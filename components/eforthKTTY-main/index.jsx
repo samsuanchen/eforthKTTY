@@ -167,6 +167,8 @@ var main = React.createClass({
 // 寫到 com port
   sendCommand:function(cmd) { var j;
     console.log(Date(),this.state.port,"sendCommand:\r\n",cmd);
+    if (cmd==='      FOR COUNT DUP BL < OVER $FE > OR')
+      console.log("cmd='      FOR COUNT DUP BL < OVER $FE > OR'");
     // A. ignore leading \r\n
     cmd=cmd.replace(/^(\r?\n)+/,'');
     // B. check if cmd too long
