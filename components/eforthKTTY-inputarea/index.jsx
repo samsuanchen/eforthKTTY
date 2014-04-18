@@ -81,11 +81,15 @@ var inputarea = React.createClass({
     }
   },
   cmdKeyUp: function (event) {
+    this.props.onKeyUp(event);
     if (event.keyCode === ENTER_KEY) {
       event.target.value='';
     }
   },
   cmdKeyDown: function (event) {
+    if (this.props.onKeyDown(event)) {
+      return;
+    }
     var key=event.keyCode, ctrl=event.ctrlKey;
     if (key===16||key===17) return;
     if (key===UP_KEY) {

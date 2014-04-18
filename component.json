@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "keywords": [],
   "dependencies": {
-    "dhammagear/boot": "*",
+    "ksanaforge/boot": "*",
     "brighthas/bootstrap": "*",
     "component/jquery": "*",
     "eforthKTTY/main": "*",

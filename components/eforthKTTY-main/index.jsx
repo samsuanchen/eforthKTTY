@@ -1,23 +1,24 @@
 /** @jsx React.DOM */
-var titlebar=Require("titlebar"); 
-var outputarea=Require("outputarea"); 
-var controlpanel=Require("controlpanel"); 
-var statusbar=Require("statusbar");
-// 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
-// http://facebook.github.io/react/docs/component-specs.html 
-var conn=Require("eforthKTTY/conn");
-var lib=Require("eforthKTTY/lib");
-var recieved, lastByte, lastText, log='', ok, getOk;
-var iLast;
-var HIDE_KEY=1;
-var hiddenCmd='1 EMIT CR .S CR WORDS';
-var bHiddenCmd, hide, hideText;
-var ACK_KEY=6;
-var timer, cmd, lastCmd, error=0;
-var fileName, lines, lineIndex, lineDelay;
+var titlebar=Require("titlebar")
+var outputarea=Require("outputarea") 
+var controlpanel=Require("controlpanel")
+var statusbar=Require("statusbar")
+var conn=Require("eforthKTTY/conn")
+var lib=Require("eforthKTTY/lib")
+var recieved, lastByte, lastText, log='', ok, getOk
+var iLast
+var HIDE_KEY=1
+var hiddenCmd='1 EMIT CR .S CR WORDS'
+var bHiddenCmd, hide, hideText
+var waitCmd=6
+var waitKey=5
+var checkKey=4
+var keyPressed
+var timer, cmd, lastCmd, error=0
+var fileName, lines, lineIndex, lineDelay
 var main = React.createClass({
   getInitialState: function() {
-    var state=nodeRequire('./settings.js');
+    var state=nodeRequire('./settings.js')
     state.log='';
     state.lastText='';
     state.connecting=false;
@@ -41,6 +42,8 @@ var main = React.createClass({
           onChangeDir={this.onChangeDir}
           onChangeLineDelay={this.onChangeLineDelay}
           cmd={this.state.cmd}
+          onKeyDown={this.onKeyDown}
+          onKeyUp={this.onKeyUp}
           file={this.state.file}
           port      ={this.state.port}
           baud      ={this.state.baud}
@@ -54,6 +57,8 @@ var main = React.createClass({
       </div>
     );
   },
+  // 前述 Component 的 Spec 及 Lifecycle 可參考下列網址
+  // http://facebook.github.io/react/docs/component-specs.html 
   onPortChange:function(port) {
     if (this.state.connecting)
       this.closePort();
@@ -92,12 +97,11 @@ var main = React.createClass({
     window.onclose=this.closePort;
   },
   onPortRecievedData:function(bytes) {
-    for (iLast=bytes.length-1;iLast>=0;iLast--)
-      if (bytes[iLast]===ACK_KEY)
-        break;
-    lastByte=bytes[bytes.length-1];
-    if (iLast>=0)
+    for (iLast=bytes.length-1;iLast>=0;iLast--) {
       lastByte=bytes[iLast];
+      if (lastByte>=checkKey&&lastByte<=waitCmd)
+        break;
+    }
   //console.log(Date(),this.state.port,bytes.length,"bytes recieved:",bytes);
     recieved=Buffer.concat([recieved,bytes],[2]);
     error=0;
@@ -114,7 +118,7 @@ var main = React.createClass({
       // use blue to color the last command
       lastText=lib.markInp(lastText,lastCmd);
     }
-    if (lastByte===ACK_KEY) { // ready to send next command
+    if (lastByte>=checkKey&&lastByte<=waitCmd) { // ready to send next input
       recieved=bytes.slice(iLast+1);
       lastText=lastText.substr(0,lastText.length-recieved.length);
       if (!log) {
@@ -135,16 +139,35 @@ var main = React.createClass({
         hideText=lastText;
         hide=false;
       } else {
-        console.log(Date(),this.state.port,"text recieved:",lastText,'hide',hide);
+        console.log(this.state.port,"text recieved:",lastText,'hide',hide);
         log+=lastText;
         hideText='';
       }
       lastText='';
       this.setState({'lastText':lastText,'log':log});
       clearTimeout(timer);
-      this.sendNextCommand();
-    } else if (!hide)
+      if (lastByte===waitCmd) {
+        this.sendNextCommand();
+      } else if (lastByte===checkKey) {
+        if (keyPressed) {
+          conn.doWritePortKey(keyPressed);
+          keyPressed=null;
+        }
+      }
+    } else if (!hide) { // lastByte > waitCmd
       this.setState({'lastText':lastText});
+    }
+  },
+  onKeyDown:function(e){
+    keyPressed=e.keyCode
+    if(lastByte===waitKey) {
+      conn.doWritePortKey(keyPressed)
+    } else if (lastByte===checkKey) {
+      return true
+    }
+  },
+  onKeyUp:function(e){
+    keyPressed=null
   },
   onPortError:function(e) {
     console.log(Date(),this.state.port,"error",e);

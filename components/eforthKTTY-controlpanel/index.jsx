@@ -18,6 +18,8 @@ var controlpanel = React.createClass({
           onChangeLineDelay={this.props.onChangeLineDelay}
           onChangeDir={this.props.onChangeDir}
           cmd={this.props.cmd}
+          onKeyDown={this.props.onKeyDown}
+          onKeyUp={this.props.onKeyUp}
           file={this.props.file}
           onExecute ={this.props.onExecute}/>
         <connection

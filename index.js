@@ -1,2 +1,2 @@
 var boot=require("boot");
-boot("eforthKTTY","main","main");
+boot("test","main","main");
